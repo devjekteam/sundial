@@ -14,7 +14,7 @@ $bgColor:           #FBFBFB;
 $borderColor:       #ececec;
 $textColor:         #333;
 $textLightColor:    #AEAEAE;
-$primaryColor:      #689AD8;
+$primaryColor:      #008ed6; //#689AD8;
 $primaryDarkColor:  darken($primaryColor, 10%);
 $errorColor:        #D83B46;
 $fontFamily:        'Open Sans', Helvetica, Tahoma, Arial, sans-serif;
@@ -29,6 +29,7 @@ $fontFamily:        'Open Sans', Helvetica, Tahoma, Arial, sans-serif;
   background-color: white;
   box-shadow: rgba(0, 0, 0, 0.2) 0px 2px 4px 0px;
   margin: 20px auto 20px auto;
+  max-width: 972px;
   z-index: 10;
   opacity: 0;
   color: $textColor;
@@ -422,6 +423,16 @@ $fontFamily:        'Open Sans', Helvetica, Tahoma, Arial, sans-serif;
     height: 15px;
     margin-right: 5px;
     vertical-align: sub;
+  }
+
+  #paypal-button {
+    margin: 15px auto;
+    width: 230px;
+    height: 36px;
+    overflow: hidden;
+  }
+  #book-button {
+    display: none;
   }
 
 }

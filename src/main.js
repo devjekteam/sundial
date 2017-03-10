@@ -1,26 +1,17 @@
 'use strict';
 
-/*!
- * Booking.js
- * Version: 1.9.3
- * http://timekit.io
- *
- * Copyright 2015 Timekit, Inc.
- * Booking.js is freely distributable under the MIT license.
- *
- */
-
 // External depenencies
-var $               = require('jquery');
-window.fullcalendar = require('fullcalendar');
-var moment          = window.moment = require('moment');
-var timekit         = require('timekit-sdk');
+var $                   = require('jquery');
+window.fullcalendar     = require('fullcalendar');
+var moment              = window.moment = require('moment');
+var timekit             = require('timekit-sdk');
+var consultationKitSkd  = require('./consultation-kit-app-sdk')();
 require('moment-timezone/builds/moment-timezone-with-data-2010-2020.js');
-var interpolate     = require('sprintf-js');
+var interpolate         = require('sprintf-js');
 
 // Internal dependencies
-var utils         = require('./utils');
-var defaultConfig = require('./defaults');
+var utils              = require('./utils');
+var defaultConfig      = require('./defaults');
 
 // Main library
 function TimekitBooking() {
@@ -55,15 +46,15 @@ function TimekitBooking() {
   // Setup the Timekit SDK with correct config
   var timekitSetupConfig = function() {
 
-    if (config.app) config.timekitConfig.app = config.app
+    if (config.app) config.timekitConfig.app = config.app;
     timekit.configure(config.timekitConfig);
 
   };
 
   // Setup the Timekit SDK with correct credentials
   var timekitSetupUser = function() {
-
-    timekit.setUser(config.email, config.apiToken);
+    console.log("we going innnnnn");
+    consultationKitSkd.setUser(config.userId, config.apiToken);
 
   };
 
@@ -72,15 +63,11 @@ function TimekitBooking() {
 
     var args = {};
 
-    // Only add email to findtime if no calendars or users are explicitly specified
-    if (!config.timekitFindTime.calendar_ids && !config.timekitFindTime.user_ids) {
-      args.emails = [config.email];
-    }
-    $.extend(args, config.timekitFindTime);
+    args['calendarId'] = config.calendar;
 
     utils.doCallback('findTimeStarted', config, args);
 
-    timekit.findTime(args)
+    consultationKitSkd.findTime(args)
     .then(function(response){
 
       utils.doCallback('findTimeSuccessful', config, response);
@@ -96,11 +83,7 @@ function TimekitBooking() {
       // Render available timeslots in FullCalendar
       renderCalendarEvents(response.data);
 
-    }).catch(function(response){
-      utils.doCallback('findTimeFailed', config, response);
-      utils.logError('An error with Timekit FindTime occured, context: ' + response);
     });
-
   };
 
   // Tells FullCalendar to go to a specifc date
@@ -174,11 +157,11 @@ function TimekitBooking() {
 
     utils.doCallback('getUserTimezoneStarted', config, args);
 
-    timekit.getUserTimezone(args).then(function(response){
+    consultationKitSkd.getUserTimezone(args).then(function(response){
 
       utils.doCallback('getUserTimezoneSuccessful', config, response);
 
-      var hostTzOffset = response.data.utc_offset;
+      var hostTzOffset = response.data.utc_offset || -7;
       var tzOffsetDiff = localTzOffset - hostTzOffset;
       var tzOffsetDiffAbs = Math.abs(localTzOffset - hostTzOffset);
       var tzDirection = (tzOffsetDiff > 0 ? 'ahead' : 'behind');
@@ -326,7 +309,8 @@ function TimekitBooking() {
       hideBookingPage();
     });
 
-    var form = bookingPageTarget.children('.bookingjs-form');
+    var form = $("#ck-form");
+    var bookingFields = form.find(".bookingjs-form-fields");
 
     form.submit(function(e) {
       submitBookingForm(this, e);
@@ -343,6 +327,46 @@ function TimekitBooking() {
     });
 
     rootTarget.append(bookingPageTarget);
+
+    paypal.Button.render({
+
+      env: 'sandbox', // Specify 'sandbox' for the test environment
+      style: {
+        size: 'medium',
+        color: 'blue',
+        shape: 'rect'
+      },
+      payment: function(resolve, reject) {
+        var CREATE_PAYMENT_URL = 'http://localhost:5000/paypal/auth/payments';
+
+        paypal.request.post(CREATE_PAYMENT_URL, { user_id: 3 })
+            .then(function(data) {
+              bookingFields.append("<input type='text' class='bookingjs-form-input hidden' name='payment_id' value='"+data.payment_id+"'/>");
+              resolve(data.payment_id);
+            })
+            .catch(function(err) {
+              reject(err);
+            });
+      },
+
+      onAuthorize: function(data) {
+        // Note: you can display a confirmation page before executing
+
+        var EXECUTE_PAYMENT_URL = 'http://localhost:5000/paypal/auth/payments/execute';
+
+        paypal.request.post(EXECUTE_PAYMENT_URL,
+            { payment_id: data.paymentID, payer_id: data.payerID })
+
+            .then(function(data) {
+              bookingFields.append("<input type='text' class='bookingjs-form-input hidden' name='payer_id' value='"+data.payerID+"'/>");
+              $("#paypal-button").hide();
+              $("#book-button").show();
+            })
+            .catch(function(err) {
+
+            });
+      }
+    }, '#paypal-button');
 
     setTimeout(function(){
       bookingPageTarget.addClass('show');
@@ -367,6 +391,7 @@ function TimekitBooking() {
 
   // Event handler on form submit
   var submitBookingForm = function(form, e) {
+    console.log("form submitted");
 
     e.preventDefault();
 
@@ -494,6 +519,7 @@ function TimekitBooking() {
 
   // Setup config
   var setConfig = function(suppliedConfig) {
+    console.log("set config");
 
     // Check whether a config is supplied
     if(suppliedConfig === undefined || typeof suppliedConfig !== 'object' || $.isEmptyObject(suppliedConfig)) {
@@ -582,6 +608,7 @@ function TimekitBooking() {
 
   // Initilization method
   var init = function(suppliedConfig) {
+    console.log("init");
 
     // Start from local config
     if (!suppliedConfig.widgetId && !suppliedConfig.widgetSlug) {
@@ -622,6 +649,7 @@ function TimekitBooking() {
   }
 
   var start = function(suppliedConfig) {
+    console.log(suppliedConfig);
 
     // Handle config and defaults
     setConfig(suppliedConfig);

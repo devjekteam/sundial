@@ -24250,7 +24250,7 @@ return /******/ (function(modules) { // webpackBootstrap
 /***/ function(module, exports, __webpack_require__) {
 
 	var H = __webpack_require__(48);
-	module.exports = function() { var T = new H.Template({code: function (c,p,i) { var t=this;t.b(i=i||"");t.b("<div class=\"bookingjs-poweredby\">");t.b("\n" + i);t.b("  <a href=\"http://consultationkit.com\" target=\"_blank\">");t.b("\n" + i);t.b("    ");t.b(t.t(t.f("timekitLogo",c,p,0)));t.b("\n" + i);t.b("    <span>Powered by Consultation Kit</span>");t.b("\n" + i);t.b("  </a>");t.b("\n" + i);t.b("</div>");t.b("\n");return t.fl(); },partials: {}, subs: {  }}, "<div class=\"bookingjs-poweredby\">\n  <a href=\"http://consultationkit.com\" target=\"_blank\">\n    {{& timekitLogo }}\n    <span>Powered by Consultation Kit</span>\n  </a>\n</div>\n", H);return T; }();
+	module.exports = function() { var T = new H.Template({code: function (c,p,i) { var t=this;t.b(i=i||"");t.b("<div class=\"bookingjs-poweredby\">");t.b("\n" + i);t.b("  <a href=\"http://consultationkit.com\" target=\"_blank\">");t.b("\n" + i);t.b("    <span>Powered by Consultation Kit</span>");t.b("\n" + i);t.b("  </a>");t.b("\n" + i);t.b("</div>");t.b("\n");return t.fl(); },partials: {}, subs: {  }}, "<div class=\"bookingjs-poweredby\">\n  <a href=\"http://consultationkit.com\" target=\"_blank\">\n    <span>Powered by Consultation Kit</span>\n  </a>\n</div>\n", H);return T; }();
 
 /***/ },
 /* 60 */

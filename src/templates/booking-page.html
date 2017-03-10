@@ -2,7 +2,7 @@
   <a class="bookingjs-bookpage-close" href="#">{{& closeIcon }}</a>
   <h2 class="bookingjs-bookpage-date">{{ chosenDate }}</h2>
   <h3 class="bookingjs-bookpage-time">{{ chosenTime }}</h3>
-  <form class="bookingjs-form" action="#">
+  <form id="ck-form" class="bookingjs-form" action="#">
     <div class="bookingjs-form-box">
       <div class="bookingjs-form-success-message">
         <div class="title">{{ successMessageTitle }}</div>
@@ -14,7 +14,8 @@
         {{> formFields }}
       </div>
     </div>
-    <button class="bookingjs-form-button" type="submit">
+    <div id="paypal-button"></div>
+    <button id="book-button" class="bookingjs-form-button" type="submit">
       <span class="inactive-text">{{ submitText }}</span>
       <span class="loading-text">{{& loadingIcon }}</span>
       <span class="error-text">{{& errorIcon }}</span>

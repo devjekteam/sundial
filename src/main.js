@@ -46,7 +46,7 @@ function TimekitBooking() {
   // Setup the Timekit SDK with correct config
   var timekitSetupConfig = function() {
 
-    if (config.app) config.timekitConfig.app = config.app
+    if (config.app) config.timekitConfig.app = config.app;
     timekit.configure(config.timekitConfig);
 
   };
@@ -161,7 +161,7 @@ function TimekitBooking() {
 
       utils.doCallback('getUserTimezoneSuccessful', config, response);
 
-      var hostTzOffset = response.data.utc_offset;
+      var hostTzOffset = response.data.utc_offset || -7;
       var tzOffsetDiff = localTzOffset - hostTzOffset;
       var tzOffsetDiffAbs = Math.abs(localTzOffset - hostTzOffset);
       var tzDirection = (tzOffsetDiff > 0 ? 'ahead' : 'behind');
@@ -309,7 +309,8 @@ function TimekitBooking() {
       hideBookingPage();
     });
 
-    var form = bookingPageTarget.children('.bookingjs-form');
+    var form = $("#ck-form");
+    var bookingFields = form.find(".bookingjs-form-fields");
 
     form.submit(function(e) {
       submitBookingForm(this, e);
@@ -326,6 +327,46 @@ function TimekitBooking() {
     });
 
     rootTarget.append(bookingPageTarget);
+
+    paypal.Button.render({
+
+      env: 'sandbox', // Specify 'sandbox' for the test environment
+      style: {
+        size: 'medium',
+        color: 'blue',
+        shape: 'rect'
+      },
+      payment: function(resolve, reject) {
+        var CREATE_PAYMENT_URL = 'http://localhost:5000/paypal/auth/payments';
+
+        paypal.request.post(CREATE_PAYMENT_URL, { user_id: 3 })
+            .then(function(data) {
+              bookingFields.append("<input type='text' class='bookingjs-form-input hidden' name='payment_id' value='"+data.payment_id+"'/>");
+              resolve(data.payment_id);
+            })
+            .catch(function(err) {
+              reject(err);
+            });
+      },
+
+      onAuthorize: function(data) {
+        // Note: you can display a confirmation page before executing
+
+        var EXECUTE_PAYMENT_URL = 'http://localhost:5000/paypal/auth/payments/execute';
+
+        paypal.request.post(EXECUTE_PAYMENT_URL,
+            { payment_id: data.paymentID, payer_id: data.payerID })
+
+            .then(function(data) {
+              bookingFields.append("<input type='text' class='bookingjs-form-input hidden' name='payer_id' value='"+data.payerID+"'/>");
+              $("#paypal-button").hide();
+              $("#book-button").show();
+            })
+            .catch(function(err) {
+
+            });
+      }
+    }, '#paypal-button');
 
     setTimeout(function(){
       bookingPageTarget.addClass('show');
@@ -350,6 +391,7 @@ function TimekitBooking() {
 
   // Event handler on form submit
   var submitBookingForm = function(form, e) {
+    console.log("form submitted");
 
     e.preventDefault();
 

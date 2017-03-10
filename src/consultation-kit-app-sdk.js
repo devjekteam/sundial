@@ -79,7 +79,7 @@ ConsultationKitSdk.prototype.getUserTimezone = function(args) {
     url: this.baseUrl + 'users/' + this.userId + '/timezone',
     type: 'GET',
     success: function(result) {
-      console.log("DONE BITCH")
+      console.log("DONE BITCH");
       return result
     }});
 }

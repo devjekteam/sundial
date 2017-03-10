@@ -1,26 +1,17 @@
 'use strict';
 
-/*!
- * Booking.js
- * Version: 1.9.3
- * http://timekit.io
- *
- * Copyright 2015 Timekit, Inc.
- * Booking.js is freely distributable under the MIT license.
- *
- */
-
 // External depenencies
-var $               = require('jquery');
-window.fullcalendar = require('fullcalendar');
-var moment          = window.moment = require('moment');
-var timekit         = require('timekit-sdk');
+var $                   = require('jquery');
+window.fullcalendar     = require('fullcalendar');
+var moment              = window.moment = require('moment');
+var timekit             = require('timekit-sdk');
+var consultationKitSkd  = require('./consultation-kit-app-sdk')();
 require('moment-timezone/builds/moment-timezone-with-data-2010-2020.js');
-var interpolate     = require('sprintf-js');
+var interpolate         = require('sprintf-js');
 
 // Internal dependencies
-var utils         = require('./utils');
-var defaultConfig = require('./defaults');
+var utils              = require('./utils');
+var defaultConfig      = require('./defaults');
 
 // Main library
 function TimekitBooking() {
@@ -62,8 +53,8 @@ function TimekitBooking() {
 
   // Setup the Timekit SDK with correct credentials
   var timekitSetupUser = function() {
-
-    timekit.setUser(config.email, config.apiToken);
+    console.log("we going innnnnn");
+    consultationKitSkd.setUser(config.userId, config.apiToken);
 
   };
 
@@ -72,15 +63,11 @@ function TimekitBooking() {
 
     var args = {};
 
-    // Only add email to findtime if no calendars or users are explicitly specified
-    if (!config.timekitFindTime.calendar_ids && !config.timekitFindTime.user_ids) {
-      args.emails = [config.email];
-    }
-    $.extend(args, config.timekitFindTime);
+    args['calendarId'] = config.calendar;
 
     utils.doCallback('findTimeStarted', config, args);
 
-    timekit.findTime(args)
+    consultationKitSkd.findTime(args)
     .then(function(response){
 
       utils.doCallback('findTimeSuccessful', config, response);
@@ -96,11 +83,7 @@ function TimekitBooking() {
       // Render available timeslots in FullCalendar
       renderCalendarEvents(response.data);
 
-    }).catch(function(response){
-      utils.doCallback('findTimeFailed', config, response);
-      utils.logError('An error with Timekit FindTime occured, context: ' + response);
     });
-
   };
 
   // Tells FullCalendar to go to a specifc date
@@ -174,7 +157,7 @@ function TimekitBooking() {
 
     utils.doCallback('getUserTimezoneStarted', config, args);
 
-    timekit.getUserTimezone(args).then(function(response){
+    consultationKitSkd.getUserTimezone(args).then(function(response){
 
       utils.doCallback('getUserTimezoneSuccessful', config, response);
 
@@ -494,6 +477,7 @@ function TimekitBooking() {
 
   // Setup config
   var setConfig = function(suppliedConfig) {
+    console.log("set config");
 
     // Check whether a config is supplied
     if(suppliedConfig === undefined || typeof suppliedConfig !== 'object' || $.isEmptyObject(suppliedConfig)) {
@@ -582,6 +566,7 @@ function TimekitBooking() {
 
   // Initilization method
   var init = function(suppliedConfig) {
+    console.log("init");
 
     // Start from local config
     if (!suppliedConfig.widgetId && !suppliedConfig.widgetSlug) {
@@ -622,6 +607,7 @@ function TimekitBooking() {
   }
 
   var start = function(suppliedConfig) {
+    console.log(suppliedConfig);
 
     // Handle config and defaults
     setConfig(suppliedConfig);

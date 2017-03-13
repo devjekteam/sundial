@@ -393,34 +393,39 @@ return /******/ (function(modules) { // webpackBootstrap
 	        shape: 'rect'
 	      },
 	      payment: function(resolve, reject) {
-	        var CREATE_PAYMENT_URL = 'http://localhost:5000/paypal/auth/payments';
-	
-	        paypal.request.post(CREATE_PAYMENT_URL, { user_id: 3 })
-	            .then(function(data) {
-	              bookingFields.append("<input type='text' class='bookingjs-form-input hidden' name='payment_id' value='"+data.payment_id+"'/>");
-	              resolve(data.payment_id);
-	            })
-	            .catch(function(err) {
-	              reject(err);
-	            });
+	        console.log(config.calendar);
+	        consultationKitSkd.createPayment(config.calendar)
+	          .done(function(data) {
+	            bookingFields.append("<input type='text' class='bookingjs-form-input hidden' name='payment_id' value='"+data.payment_id+"'/>");
+	            resolve(data.payment_id);
+	          })
+	          .fail(function(err) {
+	            reject(err.statusText);
+	          })
 	      },
 	
 	      onAuthorize: function(data) {
-	        // Note: you can display a confirmation page before executing
-	
-	        var EXECUTE_PAYMENT_URL = 'http://localhost:5000/paypal/auth/payments/execute';
-	
-	        paypal.request.post(EXECUTE_PAYMENT_URL,
-	            { payment_id: data.paymentID, payer_id: data.payerID })
-	
-	            .then(function(data) {
+	        var bookingArgs = {
+	          start_datetime: moment(eventData.start).format(),
+	          end_datetime: moment(eventData.end).format(),
+	          calendar_id: config.calendar,
+	          payment_id: data.paymentID,
+	          payer_id: data.payerID,
+	          client: {
+	            first_name: 'Dan',
+	            last_name: 'Sipple',
+	            email: 'dan@consultationkit.com'
+	          }
+	        };
+	        consultationKitSkd.createBooking(bookingArgs)
+	            .done(function(d) {
 	              bookingFields.append("<input type='text' class='bookingjs-form-input hidden' name='payer_id' value='"+data.payerID+"'/>");
 	              $("#paypal-button").hide();
 	              $("#book-button").show();
 	            })
-	            .catch(function(err) {
-	
-	            });
+	            .fail(function(err) {
+	                console.log('error: ', err)
+	            })
 	      }
 	    }, '#paypal-button');
 	
@@ -21141,6 +21146,42 @@ return /******/ (function(modules) { // webpackBootstrap
 	  this.apiToken = apiToken;
 	}
 	
+	ConsultationKitSdk.prototype.createPayment = function(calendarId) {
+	
+	    var url = this.baseUrl + 'paypal/auth/payments';
+	    return $.ajax({'url': url, 'type':'POST',
+	            'headers': {
+	                "authorization": this.apiToken
+	            },
+	            data: JSON.stringify({
+	                calendar_id: calendarId
+	            }),
+	            contentType: "application/json"
+	        }
+	    );
+	}
+	
+	ConsultationKitSdk.prototype.createBooking = function(args) {
+	
+	    console.log('args: ', args);
+	    var url = this.baseUrl + 'auth/bookings';
+	    return $.ajax({'url': url, 'type':'POST',
+	            'headers': {
+	                "authorization": this.apiToken
+	            },
+	            contentType: "application/json",
+	            data: JSON.stringify({
+	                start_datetime: args.start_datetime,
+	                end_datetime: args.end_datetime,
+	                calendar_id: args.calendar_id,
+	                payment_id: args.payment_id,
+	                payer_id: args.payer_id,
+	                client: args.client
+	            })
+	        }
+	    );
+	}
+	
 	ConsultationKitSdk.prototype.findTime = function(args) {
 	  var addDay = function (date, amount) {
 	      return new Date(date.valueOf() + amount * (1000 * 60 * 60 * 24));
@@ -21167,14 +21208,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	      var start = toBeginningOfDay(now);
 	      var end = toEndOfDay(now);
 	
-	      const availabiliyPromises = [];
+	      const availabilityPromises = [];
 	
 	      for (var i = 0; i < days; i++) {
 	        const start_datetime = RFC3339DateString(addDay(start, i));
 	        const end_datetime = RFC3339DateString(addDay(end, i));
 	
 	        const url = baseUrl + 'calendars/' + args.calendarId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
-	        availabiliyPromises.push(
+	        availabilityPromises.push(
 	          $.ajax({'url': url, 'type':'GET',
 	                  'headers': {
 	                    "authorization": apiToken
@@ -21187,7 +21228,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	            );
 	      }
 	
-	      return availabiliyPromises;
+	      return availabilityPromises;
 	  }
 	
 	  var times = [];

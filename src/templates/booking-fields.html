@@ -1,24 +1,48 @@
-
-<input
-  class="bookingjs-form-input input-name"
-  type="text"
-  name="name"
-  placeholder="{{ fields.name.placeholder }}"
-  {{# fields.name.prefilled }} value="{{ fields.name.prefilled }}" {{/ fields.name.prefilled }}
-  {{# fields.name.locked }} readonly {{/ fields.name.locked }}
-  required
-/>
-
-<input
-  class="bookingjs-form-input input-email"
-  type="email"
-  name="email"
-  placeholder="{{ fields.email.placeholder }}"
-  {{# fields.email.prefilled }} value="{{ fields.email.prefilled }}" {{/ fields.email.prefilled }}
-  {{# fields.email.locked }} readonly {{/ fields.email.locked }}
-  required
-/>
-
+<div class="bookingjs-row">
+  <div class="bookingjs-col">
+    <div class="bookingjs-input-group">
+      <label for="bookingjs-first_name" class="bookingjs-input-group-label">First Name <span id="first_name-error" class="bookingjs-error"></span></label>
+      <input
+        class="bookingjs-form-input input-name"
+        type="text"
+        name="first_name"
+        id="bookingjs-first_name"
+        placeholder="{{ fields.first_name.placeholder }}"
+        {{# fields.first_name.prefilled }} value="{{ fields.first_name.prefilled }}" {{/ fields.first_name.prefilled }}
+      {{# fields.first_name.locked }} readonly {{/ fields.first_name.locked }}
+      required
+      />
+    </div>
+  </div>
+  <div class="bookingjs-col">
+    <div class="bookingjs-input-group">
+      <label for="bookingjs-last_name" class="bookingjs-input-group-label">Last Name <span id="last_name-error" class="bookingjs-error"></span></label>
+      <input
+        class="bookingjs-form-input input-name"
+        type="text"
+        name="last_name"
+        id="bookingjs-last_name"
+        placeholder="{{ fields.last_name.placeholder }}"
+        {{# fields.last_name.prefilled }} value="{{ fields.last_name.prefilled }}" {{/ fields.last_name.prefilled }}
+      {{# fields.last_name.locked }} readonly {{/ fields.last_name.locked }}
+      required
+      />
+    </div>
+  </div>
+</div>
+<div class="bookingjs-input-group">
+  <label for="bookingjs-email" class="bookingjs-input-group-label">Email <span id="email-error" class="bookingjs-error"></span></label>
+  <input
+    class="bookingjs-form-input input-email"
+    type="email"
+    name="email"
+    id="bookingjs-email"
+    placeholder="{{ fields.email.placeholder }}"
+    {{# fields.email.prefilled }} value="{{ fields.email.prefilled }}" {{/ fields.email.prefilled }}
+    {{# fields.email.locked }} readonly {{/ fields.email.locked }}
+    required
+  />
+</div>
 {{# fields.phone.enabled }}
   <input
     class="bookingjs-form-input input-phone"
@@ -56,11 +80,11 @@
 {{/ fields.location.enabled }}
 
 {{# fields.comment.enabled }}
-  <textarea
-    class="bookingjs-form-input input-comment"
-    rows="3"
-    name="comment"
-    placeholder="{{ fields.comment.placeholder }}"
-    {{# fields.comment.required }} required {{/ fields.comment.required }}
-    {{# fields.comment.locked }} readonly {{/ fields.comment.locked }}>{{# fields.comment.prefilled }}{{ fields.comment.prefilled }}{{/ fields.comment.prefilled }}</textarea>
+<textarea
+        class="bookingjs-form-input input-comment"
+        rows="3"
+        name="comment"
+        placeholder="{{ fields.comment.placeholder }}"
+        {{# fields.comment.required }} required {{/ fields.comment.required }}
+{{# fields.comment.locked }} readonly {{/ fields.comment.locked }}>{{# fields.comment.prefilled }}{{ fields.comment.prefilled }}{{/ fields.comment.prefilled }}</textarea>
 {{/ fields.comment.enabled }}

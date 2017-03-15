@@ -1,25 +1,40 @@
 <div class="bookingjs-bookpage">
   <a class="bookingjs-bookpage-close" href="#">{{& closeIcon }}</a>
-  <h2 class="bookingjs-bookpage-date">{{ chosenDate }}</h2>
-  <h3 class="bookingjs-bookpage-time">{{ chosenTime }}</h3>
   <form id="ck-form" class="bookingjs-form" action="#">
-    <div class="bookingjs-form-box">
-      <div class="bookingjs-form-success-message">
-        <div class="title">{{ successMessageTitle }}</div>
-        <div class="body">{{& successMessageBody }}</div>
+    <div class="bookingjs-bookpage-content">
+      <div class="bookingjs-bookpage-header">
+        <span>Complete your booking</span>
       </div>
-      <div class="bookingjs-form-fields">
-        <input class="bookingjs-form-input hidden" type="text" name="start" value="{{ start }}" />
-        <input class="bookingjs-form-input hidden" type="text" name="end" value="{{ end }}" />
-        {{> formFields }}
+      <div class="bookingjs-bookpage-container">
+        <div class="bookingjs-bookpage-content-booking-info">
+          <div class="bookingjs-bookpage-content-booking-info-header">
+            <span class="bookingjs-col">Time</span>
+            <span class="bookingjs-col right-align">Cost</span>
+          </div>
+          <div class="bookingjs-bookpage-content-booking-info-body">
+            <div class="bookingjs-col">
+              <h2 class="bookingjs-bookpage-date">{{ chosenDate }}</h2>
+              <h3 class="bookingjs-bookpage-time">{{ chosenTime }}</h3>
+            </div>
+            <div class="bookingjs-col right-align">
+              <span class="bookingjs-bookpage-content-booking-info-body-price">$50</span>
+            </div>
+            <div class="clear"></div>
+          </div>
+        </div>
+        <div class="bookingjs-form-box">
+          <div class="bookingjs-form-success-message">
+            <div class="title">{{ successMessageTitle }}</div>
+            <div class="body">{{& successMessageBody }}</div>
+          </div>
+          <div class="bookingjs-form-fields">
+            {{> formFields }}
+          </div>
+        </div>
       </div>
     </div>
-    <div id="paypal-button"></div>
-    <button id="book-button" class="bookingjs-form-button" type="submit">
-      <span class="inactive-text">{{ submitText }}</span>
-      <span class="loading-text">{{& loadingIcon }}</span>
-      <span class="error-text">{{& errorIcon }}</span>
-      <span class="success-text">{{& checkmarkIcon }}</span>
-    </button>
+    <div class="bookingjs-bookpage-footer">
+      <div id="paypal-button"></div>
+    </div>
   </form>
 </div>

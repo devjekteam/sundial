@@ -11,7 +11,7 @@ var primary = {
   avatar: '',
   autoload: true,
   includeStyles: true,
-  showCredits: true,
+  showCredits: false,
   goToFirstEvent: true,
   bookingGraph: 'instant',
   possibleLengths: {
@@ -19,18 +19,23 @@ var primary = {
     'Long': '2 hour'
   },
   bookingFields: {
-    name: {
-      placeholder: 'Full name',
+    first_name: {
+      placeholder: 'John',
+      prefilled: false,
+      locked: false
+    },
+    last_name: {
+      placeholder: 'Doe',
       prefilled: false,
       locked: false
     },
     email: {
-      placeholder: 'E-mail',
+      placeholder: 'john.doe@gmail.com',
       prefilled: false,
       locked: false
     },
     comment: {
-      enabled: true,
+      enabled: false,
       placeholder: 'Comment',
       prefilled: false,
       required: false,

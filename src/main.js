@@ -215,7 +215,7 @@ function TimekitBooking() {
   var decideCalendarSize = function() {
 
     var view = 'agendaWeek';
-    var height = 420;
+    var height = 480;
     var rootWidth = rootTarget.width();
 
     if (rootWidth < 480) {
@@ -309,18 +309,6 @@ function TimekitBooking() {
       hideBookingPage();
     });
 
-    var form = $("#ck-form");
-    var bookingFields = form.find(".bookingjs-form-fields");
-
-    form.submit(function(e) {
-      submitBookingForm(this, e);
-    });
-
-    // Show powered by Timekit message
-    if (config.showCredits) {
-      renderPoweredByMessage(bookingPageTarget);
-    }
-
     $(document).on('keyup', function(e) {
       // escape key maps to keycode `27`
       if (e.keyCode === 27) { hideBookingPage(); }
@@ -328,19 +316,31 @@ function TimekitBooking() {
 
     rootTarget.append(bookingPageTarget);
 
+    var form = $("#ck-form");
     paypal.Button.render({
-
       env: 'sandbox', // Specify 'sandbox' for the test environment
       style: {
         size: 'medium',
         color: 'blue',
-        shape: 'rect'
+        shape: 'pill'
       },
       payment: function(resolve, reject) {
-        console.log(config.calendar);
+        var formDataArr = form.serializeArray();
+
+        $('.bookingjs-form-input').removeClass('bookingjs-error');
+        $('.bookingjs-error').text('');
+        var client = {};
+        $.each(formDataArr, function(i, prop) {
+          client[prop.name] = prop.value;
+          if (prop.value === '') {
+            $('#'+prop.name + '-error').text('This field is required!');
+            $('#bookingjs-' + prop.name).addClass('bookingjs-error');
+            reject(prop.name + ' is required!');
+          }
+        });
+
         consultationKitSkd.createPayment(config.calendar)
           .done(function(data) {
-            bookingFields.append("<input type='text' class='bookingjs-form-input hidden' name='payment_id' value='"+data.payment_id+"'/>");
             resolve(data.payment_id);
           })
           .fail(function(err) {
@@ -349,21 +349,23 @@ function TimekitBooking() {
       },
 
       onAuthorize: function(data) {
+
+        var formDataArr = form.serializeArray();
+        var client = {};
+        $.each(formDataArr, function(i, prop) {
+            client[prop.name] = prop.value;
+        });
+
         var bookingArgs = {
           start_datetime: moment(eventData.start).format(),
           end_datetime: moment(eventData.end).format(),
           calendar_id: config.calendar,
           payment_id: data.paymentID,
           payer_id: data.payerID,
-          client: {
-            first_name: 'Dan',
-            last_name: 'Sipple',
-            email: 'dan@consultationkit.com'
-          }
+          client: client
         };
         consultationKitSkd.createBooking(bookingArgs)
             .done(function(d) {
-              bookingFields.append("<input type='text' class='bookingjs-form-input hidden' name='payer_id' value='"+data.payerID+"'/>");
               $("#paypal-button").hide();
               $("#book-button").show();
             })
@@ -497,25 +499,6 @@ function TimekitBooking() {
 
   };
 
-  // Render the powered by Timekit message
-  var renderPoweredByMessage = function(pageTarget) {
-
-    var campaignName = 'widget'
-    var campaignSource = window.location.hostname.replace(/\./g, '-')
-    if (config.widgetSlug) { campaignName = 'hosted-widget'; }
-    if (config.widgetId) { campaignName = 'embedded-widget'; }
-
-    var template = require('./templates/poweredby.html');
-    var timekitLogo = require('!svg-inline!./assets/timekit-logo.svg');
-    var poweredTarget = $(template.render({
-      timekitLogo: timekitLogo,
-      campaignName: campaignName,
-      campaignSource: campaignSource
-    }));
-
-    pageTarget.append(poweredTarget);
-
-  };
 
   // Set config defaults
   var setConfigDefaults = function(suppliedConfig) {

@@ -111,14 +111,22 @@ ConsultationKitSdk.prototype.findTime = function(args) {
 
 ConsultationKitSdk.prototype.getUserTimezone = function(args) {
   console.log(args);
-  $.ajax({
-    url: this.baseUrl + 'users/' + this.userId + '/timezone',
-    type: 'GET',
-    success: function(result) {
-      console.log("DONE BITCH");
-      return result
-    }});
-}
+  // $.ajax({
+  //   url: this.baseUrl + 'users/' + this.userId + '/timezone',
+  //   type: 'GET',
+  //   success: function(result) {
+  //     console.log("DONE BITCH");
+  //     return result
+  //   }});
+    return new Promise(function(resolve, reject) {
+
+        resolve({data :{
+            timezone: 'America/New_York',
+            utc_offset: -5
+        }})
+
+    })
+};
 
 
 module.exports = ConsultationKitSdk;

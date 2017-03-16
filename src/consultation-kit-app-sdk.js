@@ -86,7 +86,7 @@ ConsultationKitSdk.prototype.findTime = function(args) {
         } else {
           url = baseUrl + 'calendars/' + args.calendarId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
         }
-        availabiliyPromises.push(
+        availabilityPromises.push(
           $.ajax({'url': url, 'type':'GET',
                   'headers': {
                     "authorization": apiToken
@@ -103,7 +103,7 @@ ConsultationKitSdk.prototype.findTime = function(args) {
   }
 
   var times = [];
-  const availPromises = getAvailabilities(2, times, this.baseUrl, this.apiToken);
+  const availPromises = getAvailabilities(7, times, this.baseUrl, this.apiToken);
 
   // // jacked up query promise
   return $.when.apply($, availPromises).then(function() {

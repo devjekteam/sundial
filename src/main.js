@@ -14,7 +14,7 @@ var utils              = require('./utils');
 var defaultConfig      = require('./defaults');
 
 // Main library
-function TimekitBooking() {
+function ConsultationKitBooking() {
 
   // Library config
   var config = {};
@@ -54,7 +54,6 @@ function TimekitBooking() {
   // Setup the Timekit SDK with correct credentials
   var timekitSetupUser = function() {
     consultationKitSkd.setUser(config.userId, config.apiToken);
-
   };
 
   // Fetch availabile time through Consultation Kit SDK
@@ -63,6 +62,8 @@ function TimekitBooking() {
     var args = {};
 
     args['calendarId'] = config.calendar;
+    args['editCalendar'] = config.editCalendar;
+    args['userId'] = config.userId;
 
     utils.doCallback('findTimeStarted', config, args);
 
@@ -81,7 +82,6 @@ function TimekitBooking() {
 
       // Render available timeslots in FullCalendar
       renderCalendarEvents(response.data);
-
     });
   };
 
@@ -175,28 +175,60 @@ function TimekitBooking() {
 
       timezoneHelperTarget.replaceWith(newTimezoneHelperTarget);
 
-    }).catch(function(response){
-      utils.doCallback('getUserTimezoneFailed', config, response);
-      utils.logError('An error with Timekit getUserTimezone occured, context: ' + response);
     });
 
   };
 
   // Setup and render FullCalendar
-  var initializeCalendar = function() {
+  var initializeCalendar = function(editCalendar) {
 
     var sizing = decideCalendarSize();
 
-    var args = {
-      defaultView: sizing.view,
-      height: sizing.height,
-      eventClick: showBookingPage,
-      windowResize: function() {
-        var sizing = decideCalendarSize();
-        calendarTarget.fullCalendar('changeView', sizing.view);
-        calendarTarget.fullCalendar('option', 'height', sizing.height);
-      }
-    };
+    if (editCalendar) {
+      var args = {
+        defaultView: sizing.view,
+        height: sizing.height,
+        eventClick: function(e) {
+          console.log(e);
+        },
+        windowResize: function() {
+          var sizing = decideCalendarSize();
+          calendarTarget.fullCalendar('changeView', sizing.view);
+          calendarTarget.fullCalendar('option', 'height', sizing.height);
+        },
+        selectable: true,
+  			selectHelper: true,
+        editable: true,
+  			select: function(start, end) {
+  				var eventData = {
+            start: start,
+            end: end
+          };
+
+          var args = Object.assign({}, eventData, {
+            'userId': config.userId,
+            'apiToken': config.apiToken
+          });
+
+          consultationKitSkd.createAvailability(args);
+
+          $('#calendar').fullCalendar('renderEvent', eventData, true);
+  				$('#calendar').fullCalendar('unselect');
+  			}
+      };
+    } else {
+      var args = {
+        defaultView: sizing.view,
+        height: sizing.height,
+        eventClick: showBookingPage,
+        windowResize: function() {
+          var sizing = decideCalendarSize();
+          calendarTarget.fullCalendar('changeView', sizing.view);
+          calendarTarget.fullCalendar('option', 'height', sizing.height);
+        }
+      };
+    }
+
 
     $.extend(true, args, config.fullCalendar);
 
@@ -405,8 +437,6 @@ function TimekitBooking() {
 
   // Setup config
   var setConfig = function(suppliedConfig) {
-    console.log("set config");
-
     // Check whether a config is supplied
     if(suppliedConfig === undefined || typeof suppliedConfig !== 'object' || $.isEmptyObject(suppliedConfig)) {
       utils.logError('No configuration was supplied or found. Please supply a config object upon library initialization');
@@ -466,7 +496,7 @@ function TimekitBooking() {
     timekitSetupUser();
 
     // Initialize FullCalendar
-    initializeCalendar();
+    initializeCalendar(config.editCalendar);
 
     // Get availability through Timekit SDK
     timekitFindTime();
@@ -494,8 +524,6 @@ function TimekitBooking() {
 
   // Initilization method
   var init = function(suppliedConfig) {
-    console.log("init");
-
     // Start from local config
     if (!suppliedConfig.widgetId && !suppliedConfig.widgetSlug) {
       return start(suppliedConfig)
@@ -535,8 +563,6 @@ function TimekitBooking() {
   }
 
   var start = function(suppliedConfig) {
-    console.log(suppliedConfig);
-
     // Handle config and defaults
     setConfig(suppliedConfig);
     return render();
@@ -577,10 +603,10 @@ function TimekitBooking() {
 var globalLibraryConfig = window.timekitBookingConfig || window.hourWidgetConfig
 if (window && globalLibraryConfig && globalLibraryConfig.autoload !== false) {
   $(window).load(function(){
-    var instance = new TimekitBooking();
+    var instance = new ConsultationKitBooking();
     instance.init(globalLibraryConfig);
     module.exports = instance;
   });
 } else {
-  module.exports = TimekitBooking;
+  module.exports = ConsultationKitBooking;
 }

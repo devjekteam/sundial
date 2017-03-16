@@ -70,7 +70,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	var defaultConfig      = __webpack_require__(35);
 	
 	// Main library
-	function TimekitBooking() {
+	function ConsultationKitBooking() {
 	
 	  // Library config
 	  var config = {};
@@ -109,17 +109,17 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	  // Setup the Timekit SDK with correct credentials
 	  var timekitSetupUser = function() {
-	    console.log("we going innnnnn");
 	    consultationKitSkd.setUser(config.userId, config.apiToken);
-	
 	  };
 	
-	  // Fetch availabile time through Timekit SDK
+	  // Fetch availabile time through Consultation Kit SDK
 	  var timekitFindTime = function() {
 	
 	    var args = {};
 	
 	    args['calendarId'] = config.calendar;
+	    args['editCalendar'] = config.editCalendar;
+	    args['userId'] = config.userId;
 	
 	    utils.doCallback('findTimeStarted', config, args);
 	
@@ -138,7 +138,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	      // Render available timeslots in FullCalendar
 	      renderCalendarEvents(response.data);
-	
 	    });
 	  };
 	
@@ -232,28 +231,60 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	      timezoneHelperTarget.replaceWith(newTimezoneHelperTarget);
 	
-	    }).catch(function(response){
-	      utils.doCallback('getUserTimezoneFailed', config, response);
-	      utils.logError('An error with Timekit getUserTimezone occured, context: ' + response);
 	    });
 	
 	  };
 	
 	  // Setup and render FullCalendar
-	  var initializeCalendar = function() {
+	  var initializeCalendar = function(editCalendar) {
 	
 	    var sizing = decideCalendarSize();
 	
-	    var args = {
-	      defaultView: sizing.view,
-	      height: sizing.height,
-	      eventClick: showBookingPage,
-	      windowResize: function() {
-	        var sizing = decideCalendarSize();
-	        calendarTarget.fullCalendar('changeView', sizing.view);
-	        calendarTarget.fullCalendar('option', 'height', sizing.height);
-	      }
-	    };
+	    if (editCalendar) {
+	      var args = {
+	        defaultView: sizing.view,
+	        height: sizing.height,
+	        eventClick: function(e) {
+	          console.log(e);
+	        },
+	        windowResize: function() {
+	          var sizing = decideCalendarSize();
+	          calendarTarget.fullCalendar('changeView', sizing.view);
+	          calendarTarget.fullCalendar('option', 'height', sizing.height);
+	        },
+	        selectable: true,
+	  			selectHelper: true,
+	        editable: true,
+	  			select: function(start, end) {
+	  				var eventData = {
+	            start: start,
+	            end: end
+	          };
+	
+	          var args = Object.assign({}, eventData, {
+	            'userId': config.userId,
+	            'apiToken': config.apiToken
+	          });
+	
+	          consultationKitSkd.createAvailability(args);
+	
+	          $('#calendar').fullCalendar('renderEvent', eventData, true);
+	  				$('#calendar').fullCalendar('unselect');
+	  			}
+	      };
+	    } else {
+	      var args = {
+	        defaultView: sizing.view,
+	        height: sizing.height,
+	        eventClick: showBookingPage,
+	        windowResize: function() {
+	          var sizing = decideCalendarSize();
+	          calendarTarget.fullCalendar('changeView', sizing.view);
+	          calendarTarget.fullCalendar('option', 'height', sizing.height);
+	        }
+	      };
+	    }
+	
 	
 	    $.extend(true, args, config.fullCalendar);
 	
@@ -455,110 +486,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	  };
 	
-	  // Event handler on form submit
-	  var submitBookingForm = function(form, e) {
-	    console.log("form submitted");
-	
-	    e.preventDefault();
-	
-	    var formElement = $(form);
-	
-	    // Abort if form is submitting, have submitted or does not validate
-	    if(formElement.hasClass('loading') || formElement.hasClass('success') || formElement.hasClass('error') || !e.target.checkValidity()) {
-	      var submitButton = formElement.find('.bookingjs-form-button');
-	      submitButton.addClass('button-shake');
-	      setTimeout(function() {
-	        submitButton.removeClass('button-shake');
-	      }, 500);
-	      return;
-	    }
-	
-	    var values = {};
-	    $.each(formElement.serializeArray(), function(i, field) {
-	        values[field.name] = field.value;
-	    });
-	
-	    formElement.addClass('loading');
-	
-	    utils.doCallback('submitBookingForm', config, values);
-	
-	    // Call create event endpoint
-	    timekitCreateBooking(values).then(function(response){
-	
-	      utils.doCallback('createBookingSuccessful', config, response);
-	
-	      formElement.find('.booked-email').html(values.email);
-	      formElement.removeClass('loading').addClass('success');
-	
-	    }).catch(function(response){
-	
-	      utils.doCallback('createBookingFailed', config, response);
-	
-	      var submitButton = formElement.find('.bookingjs-form-button');
-	      submitButton.addClass('button-shake');
-	      setTimeout(function() {
-	        submitButton.removeClass('button-shake');
-	      }, 500);
-	
-	      formElement.removeClass('loading').addClass('error');
-	      setTimeout(function() {
-	        formElement.removeClass('error');
-	      }, 2000);
-	
-	      utils.logError('An error with Timekit createBooking occured, context: ' + response);
-	    });
-	
-	  };
-	
-	  // Create new booking
-	  var timekitCreateBooking = function(data) {
-	
-	    var args = {
-	      event: {
-	        start: data.start,
-	        end: data.end,
-	        what: config.name + ' x ' + data.name,
-	        where: 'TBD',
-	        description: '',
-	        calendar_id: config.calendar,
-	        participants: [data.email]
-	      },
-	      customer: {
-	        name: data.name,
-	        email: data.email,
-	        timezone: moment.tz.guess()
-	      }
-	    };
-	
-	    if (config.bookingFields.location.enabled) { args.event.where = data.location; }
-	    if (config.bookingFields.comment.enabled) {
-	      args.event.description += config.bookingFields.comment.placeholder + ': ' + data.comment + '\n';
-	    }
-	    if (config.bookingFields.phone.enabled) {
-	      args.customer.phone = data.phone;
-	      args.event.description += config.bookingFields.phone.placeholder + ': ' + data.phone + '\n';
-	    }
-	    if (config.bookingFields.voip.enabled) {
-	      args.customer.voip = data.voip;
-	      args.event.description += config.bookingFields.voip.placeholder + ': ' + data.voip + '\n';
-	    }
-	
-	    $.extend(true, args, config.timekitCreateBooking);
-	
-	    utils.doCallback('createBookingStarted', config, args);
-	
-	    var requestHeaders = {
-	      'Timekit-OutputTimestampFormat': 'Y-m-d ' + config.localization.emailTimeFormat + ' (P e)'
-	    };
-	
-	    return timekit
-	    .include('attributes', 'event')
-	    .headers(requestHeaders)
-	    .createBooking(args);
-	
-	  };
-	
-	
 	  // Set config defaults
 	  var setConfigDefaults = function(suppliedConfig) {
 	    return $.extend(true, {}, defaultConfig.primary, suppliedConfig);
@@ -566,8 +493,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	  // Setup config
 	  var setConfig = function(suppliedConfig) {
-	    console.log("set config");
-	
 	    // Check whether a config is supplied
 	    if(suppliedConfig === undefined || typeof suppliedConfig !== 'object' || $.isEmptyObject(suppliedConfig)) {
 	      utils.logError('No configuration was supplied or found. Please supply a config object upon library initialization');
@@ -627,7 +552,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    timekitSetupUser();
 	
 	    // Initialize FullCalendar
-	    initializeCalendar();
+	    initializeCalendar(config.editCalendar);
 	
 	    // Get availability through Timekit SDK
 	    timekitFindTime();
@@ -655,8 +580,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	  // Initilization method
 	  var init = function(suppliedConfig) {
-	    console.log("init");
-	
 	    // Start from local config
 	    if (!suppliedConfig.widgetId && !suppliedConfig.widgetSlug) {
 	      return start(suppliedConfig)
@@ -696,8 +619,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }
 	
 	  var start = function(suppliedConfig) {
-	    console.log(suppliedConfig);
-	
 	    // Handle config and defaults
 	    setConfig(suppliedConfig);
 	    return render();
@@ -738,12 +659,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	var globalLibraryConfig = window.timekitBookingConfig || window.hourWidgetConfig
 	if (window && globalLibraryConfig && globalLibraryConfig.autoload !== false) {
 	  $(window).load(function(){
-	    var instance = new TimekitBooking();
+	    var instance = new ConsultationKitBooking();
 	    instance.init(globalLibraryConfig);
 	    module.exports = instance;
 	  });
 	} else {
-	  module.exports = TimekitBooking;
+	  module.exports = ConsultationKitBooking;
 	}
 
 
@@ -21169,38 +21090,40 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 	
 	ConsultationKitSdk.prototype.findTime = function(args) {
-	  var addDay = function (date, amount) {
-	      return new Date(date.valueOf() + amount * (1000 * 60 * 60 * 24));
-	  };
-	  var toBeginningOfDay = function (date) {
-	      return date.setHours(0,0,0,0);
-	  };
-	
-	  var toEndOfDay = function (date) {
-	    return date.setHours(23,59,59,99);
-	  }
-	
 	  function addToTimes(availabilities, times) {
 	    for (var i = 0; i < availabilities.length; i++) {
 	      times.push({
 	        start: availabilities[i].start_datetime,
-	        end: availabilities[i].end_datetime
+	        end: availabilities[i].end_datetime,
+	        availabilityId: availabilities[i].availability_id
 	      })
 	    }
 	  }
 	
 	  function getAvailabilities(days, times, baseUrl, apiToken) {
-	      var now = new Date();
-	      var start = toBeginningOfDay(now);
-	      var end = toEndOfDay(now);
+	      var now = moment();
+	      var end = moment(now).endOf('day');
 	
 	      const availabilityPromises = [];
 	
 	      for (var i = 0; i < days; i++) {
-	        const start_datetime = RFC3339DateString(addDay(start, i));
-	        const end_datetime = RFC3339DateString(addDay(end, i));
+	        var start_time;
 	
-	        const url = baseUrl + 'calendars/' + args.calendarId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
+	        if (i != 0) {
+	          start_time = moment(now).startOf('day');
+	        } else {
+	          start_time = moment(now);
+	        }
+	
+	        const start_datetime = RFC3339DateString(moment(start_time).add(i, 'day'));
+	        const end_datetime = RFC3339DateString(moment(end).add(i, 'day'));
+	
+	        var url;
+	        if (args.editCalendar) {
+	          url = baseUrl + 'users/' + args.userId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
+	        } else {
+	          url = baseUrl + 'calendars/' + args.calendarId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
+	        }
 	        availabilityPromises.push(
 	          $.ajax({'url': url, 'type':'GET',
 	                  'headers': {
@@ -21227,16 +21150,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 	
 	ConsultationKitSdk.prototype.getUserTimezone = function(args) {
-	  console.log(args);
-	  // $.ajax({
-	  //   url: this.baseUrl + 'users/' + this.userId + '/timezone',
-	  //   type: 'GET',
-	  //   success: function(result) {
-	  //     console.log("DONE BITCH");
-	  //     return result
-	  //   }});
 	    return new Promise(function(resolve, reject) {
-	
 	        resolve({data :{
 	            timezone: 'America/New_York',
 	            utc_offset: -5
@@ -21246,16 +21160,40 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 	
 	
+	ConsultationKitSdk.prototype.createAvailability = function(args) {
+	  // length in minutes
+	  var length = args.end.diff(args.start) / (60000);
+	
+	  var payload = {
+	    user_id: args.userId,
+	    start_datetime: RFC3339DateString(args.start),
+	    length_minutes: length
+	  }
+	
+	  return $.ajax({
+	    url: this.baseUrl + 'availabilities',
+	    type: 'POST',
+	    data: JSON.stringify(payload),
+	    contentType: 'application/json',
+	    dataType: "json",
+	    'headers': {
+	      "authorization": args.apiToken
+	    }
+	  })
+	}
+	
+	
 	module.exports = ConsultationKitSdk;
 	
+	// takes moment date
 	function RFC3339DateString(d){
 	  function pad(n){return n<10 ? '0'+n : n}
-	  return d.getUTCFullYear()+'-'
-	      + pad(d.getUTCMonth()+1)+'-'
-	      + pad(d.getUTCDate())+'T'
-	      + pad(d.getUTCHours())+':'
-	      + pad(d.getUTCMinutes())+':'
-	      + pad(d.getUTCSeconds())+'Z'
+	  return d.utc().year()+'-'
+	      + pad(d.utc().month()+1)+'-'
+	      + pad(d.utc().date())+'T'
+	      + pad(d.utc().hours())+':'
+	      + pad(d.utc().minutes())+':'
+	      + pad(d.utc().seconds())+'Z'
 	}
 
 
@@ -22983,7 +22921,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	
 	// module
-	exports.push([module.id, "/*!\n * <%= meta.title %> v<%= meta.version %> Stylesheet\n * Docs & License: <%= meta.homepage %>\n * (c) <%= meta.copyright %>\n */.fc{direction:ltr;text-align:left}.fc-rtl{text-align:right}body .fc{font-size:1em}.fc-unthemed .fc-content,.fc-unthemed .fc-divider,.fc-unthemed .fc-popover,.fc-unthemed .fc-row,.fc-unthemed tbody,.fc-unthemed td,.fc-unthemed th,.fc-unthemed thead{border-color:#ddd}.fc-unthemed .fc-popover{background-color:#fff}.fc-unthemed .fc-divider,.fc-unthemed .fc-popover .fc-header{background:#eee}.fc-unthemed .fc-popover .fc-header .fc-close{color:#666}.fc-unthemed .fc-today{background:#fcf8e3}.fc-highlight{background:#bce8f1}.fc-bgevent,.fc-highlight{opacity:.3;filter:alpha(opacity=30)}.fc-bgevent{background:#8fdf82}.fc-nonbusiness{background:#d7d7d7}.fc-icon{display:inline-block;height:1em;line-height:1em;font-size:1em;text-align:center;overflow:hidden;font-family:Courier New,Courier,monospace;-webkit-touch-callout:none;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.fc-icon:after{position:relative}.fc-icon-left-single-arrow:after{content:\"\\2039\";font-weight:700;font-size:200%;top:-7%}.fc-icon-right-single-arrow:after{content:\"\\203A\";font-weight:700;font-size:200%;top:-7%}.fc-icon-left-double-arrow:after{content:\"\\AB\";font-size:160%;top:-7%}.fc-icon-right-double-arrow:after{content:\"\\BB\";font-size:160%;top:-7%}.fc-icon-left-triangle:after{content:\"\\25C4\";font-size:125%;top:3%}.fc-icon-right-triangle:after{content:\"\\25BA\";font-size:125%;top:3%}.fc-icon-down-triangle:after{content:\"\\25BC\";font-size:125%;top:2%}.fc-icon-x:after{content:\"\\D7\";font-size:200%;top:6%}.fc button{box-sizing:border-box;margin:0;height:2.1em;padding:0 .6em;font-size:1em;white-space:nowrap;cursor:pointer}.fc button::-moz-focus-inner{margin:0;padding:0}.fc-state-default{border:1px solid}.fc-state-default.fc-corner-left{border-top-left-radius:4px;border-bottom-left-radius:4px}.fc-state-default.fc-corner-right{border-top-right-radius:4px;border-bottom-right-radius:4px}.fc button .fc-icon{position:relative;top:-.05em;margin:0 .2em;vertical-align:middle}.fc-state-default{background-color:#f5f5f5;background-image:-webkit-gradient(linear,0 0,0 100%,from(#fff),to(#e6e6e6));background-image:-webkit-linear-gradient(top,#fff,#e6e6e6);background-image:linear-gradient(180deg,#fff,#e6e6e6);background-repeat:repeat-x;border-color:#e6e6e6 #e6e6e6 #bfbfbf;border-color:rgba(0,0,0,.1) rgba(0,0,0,.1) rgba(0,0,0,.25);color:#333;text-shadow:0 1px 1px hsla(0,0%,100%,.75);box-shadow:inset 0 1px 0 hsla(0,0%,100%,.2),0 1px 2px rgba(0,0,0,.05)}.fc-state-active,.fc-state-disabled,.fc-state-down,.fc-state-hover{color:#333;background-color:#e6e6e6}.fc-state-hover{color:#333;text-decoration:none;background-position:0 -15px;-webkit-transition:background-position .1s linear;transition:background-position .1s linear}.fc-state-active,.fc-state-down{background-color:#ccc;background-image:none;box-shadow:inset 0 2px 4px rgba(0,0,0,.15),0 1px 2px rgba(0,0,0,.05)}.fc-state-disabled{cursor:default;background-image:none;opacity:.65;filter:alpha(opacity=65);box-shadow:none}.fc-button-group{display:inline-block}.fc .fc-button-group>*{float:left;margin:0 0 0 -1px}.fc .fc-button-group>:first-child{margin-left:0}.fc-popover{position:absolute;box-shadow:0 2px 6px rgba(0,0,0,.15)}.fc-popover .fc-header{padding:2px 4px}.fc-popover .fc-header .fc-title{margin:0 2px}.fc-popover .fc-header .fc-close{cursor:pointer}.fc-ltr .fc-popover .fc-header .fc-title,.fc-rtl .fc-popover .fc-header .fc-close{float:left}.fc-ltr .fc-popover .fc-header .fc-close,.fc-rtl .fc-popover .fc-header .fc-title{float:right}.fc-unthemed .fc-popover{border-width:1px;border-style:solid}.fc-unthemed .fc-popover .fc-header .fc-close{font-size:.9em;margin-top:2px}.fc-popover>.ui-widget-header+.ui-widget-content{border-top:0}.fc-divider{border-style:solid;border-width:1px}hr.fc-divider{height:0;margin:0;padding:0 0 2px;border-width:1px 0}.fc-clear{clear:both}.fc-bg,.fc-bgevent-skeleton,.fc-helper-skeleton,.fc-highlight-skeleton{position:absolute;top:0;left:0;right:0}.fc-bg{bottom:0}.fc-bg table{height:100%}.fc table{width:100%;box-sizing:border-box;table-layout:fixed;border-collapse:collapse;border-spacing:0;font-size:1em}.fc th{text-align:center}.fc td,.fc th{border-style:solid;border-width:1px;padding:0;vertical-align:top}.fc td.fc-today{border-style:double}.fc .fc-row{border-style:solid;border-width:0}.fc-row table{border-left:0 hidden transparent;border-right:0 hidden transparent;border-bottom:0 hidden transparent}.fc-row:first-child table{border-top:0 hidden transparent}.fc-row{position:relative}.fc-row .fc-bg{z-index:1}.fc-row .fc-bgevent-skeleton,.fc-row .fc-highlight-skeleton{bottom:0}.fc-row .fc-bgevent-skeleton table,.fc-row .fc-highlight-skeleton table{height:100%}.fc-row .fc-bgevent-skeleton td,.fc-row .fc-highlight-skeleton td{border-color:transparent}.fc-row .fc-bgevent-skeleton{z-index:2}.fc-row .fc-highlight-skeleton{z-index:3}.fc-row .fc-content-skeleton{position:relative;z-index:4;padding-bottom:2px}.fc-row .fc-helper-skeleton{z-index:5}.fc-row .fc-content-skeleton td,.fc-row .fc-helper-skeleton td{background:none;border-color:transparent;border-bottom:0}.fc-row .fc-content-skeleton tbody td,.fc-row .fc-helper-skeleton tbody td{border-top:0}.fc-scroller{-webkit-overflow-scrolling:touch}.fc-scroller>.fc-day-grid,.fc-scroller>.fc-time-grid{position:relative;width:100%}.fc-event{position:relative;display:block;font-size:.85em;line-height:1.3;border-radius:3px;border:1px solid #3a87ad;background-color:#3a87ad;font-weight:400}.fc-event,.fc-event:hover,.ui-widget .fc-event{color:#fff;text-decoration:none}.fc-event.fc-draggable,.fc-event[href]{cursor:pointer}.fc-not-allowed,.fc-not-allowed .fc-event{cursor:not-allowed}.fc-event .fc-bg{z-index:1;background:#fff;opacity:.25;filter:alpha(opacity=25)}.fc-event .fc-content{position:relative;z-index:2}.fc-event .fc-resizer{position:absolute;z-index:4;display:none}.fc-event.fc-allow-mouse-resize .fc-resizer,.fc-event.fc-selected .fc-resizer{display:block}.fc-event.fc-selected .fc-resizer:before{content:\"\";position:absolute;z-index:9999;top:50%;left:50%;width:40px;height:40px;margin-left:-20px;margin-top:-20px}.fc-event.fc-selected{z-index:9999!important;box-shadow:0 2px 5px rgba(0,0,0,.2)}.fc-event.fc-selected.fc-dragging{box-shadow:0 2px 7px rgba(0,0,0,.3)}.fc-h-event.fc-selected:before{content:\"\";position:absolute;z-index:3;top:-10px;bottom:-10px;left:0;right:0}.fc-ltr .fc-h-event.fc-not-start,.fc-rtl .fc-h-event.fc-not-end{margin-left:0;border-left-width:0;padding-left:1px;border-top-left-radius:0;border-bottom-left-radius:0}.fc-ltr .fc-h-event.fc-not-end,.fc-rtl .fc-h-event.fc-not-start{margin-right:0;border-right-width:0;padding-right:1px;border-top-right-radius:0;border-bottom-right-radius:0}.fc-ltr .fc-h-event .fc-start-resizer,.fc-rtl .fc-h-event .fc-end-resizer{cursor:w-resize;left:-1px}.fc-ltr .fc-h-event .fc-end-resizer,.fc-rtl .fc-h-event .fc-start-resizer{cursor:e-resize;right:-1px}.fc-h-event.fc-allow-mouse-resize .fc-resizer{width:7px;top:-1px;bottom:-1px}.fc-h-event.fc-selected .fc-resizer{border-radius:4px;border-width:1px;width:6px;height:6px;border-style:solid;border-color:inherit;background:#fff;top:50%;margin-top:-4px}.fc-ltr .fc-h-event.fc-selected .fc-start-resizer,.fc-rtl .fc-h-event.fc-selected .fc-end-resizer{margin-left:-4px}.fc-ltr .fc-h-event.fc-selected .fc-end-resizer,.fc-rtl .fc-h-event.fc-selected .fc-start-resizer{margin-right:-4px}.fc-day-grid-event{margin:1px 2px 0;padding:0 1px}.fc-day-grid-event.fc-selected:after{content:\"\";position:absolute;z-index:1;top:-1px;right:-1px;bottom:-1px;left:-1px;background:#000;opacity:.25;filter:alpha(opacity=25)}.fc-day-grid-event .fc-content{white-space:nowrap;overflow:hidden}.fc-day-grid-event .fc-time{font-weight:700}.fc-ltr .fc-day-grid-event.fc-allow-mouse-resize .fc-start-resizer,.fc-rtl .fc-day-grid-event.fc-allow-mouse-resize .fc-end-resizer{margin-left:-2px}.fc-ltr .fc-day-grid-event.fc-allow-mouse-resize .fc-end-resizer,.fc-rtl .fc-day-grid-event.fc-allow-mouse-resize .fc-start-resizer{margin-right:-2px}a.fc-more{margin:1px 3px;font-size:.85em;cursor:pointer;text-decoration:none}a.fc-more:hover{text-decoration:underline}.fc-limited{display:none}.fc-day-grid .fc-row{z-index:1}.fc-more-popover{z-index:2;width:220px}.fc-more-popover .fc-event-container{padding:10px}.fc-now-indicator{position:absolute;border:0 solid red}.fc-unselectable{-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:rgba(0,0,0,0)}.fc-toolbar{text-align:center;margin-bottom:1em}.fc-toolbar .fc-left{float:left}.fc-toolbar .fc-right{float:right}.fc-toolbar .fc-center{display:inline-block}.fc .fc-toolbar>*>*{float:left;margin-left:.75em}.fc .fc-toolbar>*>:first-child{margin-left:0}.fc-toolbar h2{margin:0}.fc-toolbar button{position:relative}.fc-toolbar .fc-state-hover,.fc-toolbar .ui-state-hover{z-index:2}.fc-toolbar .fc-state-down{z-index:3}.fc-toolbar .fc-state-active,.fc-toolbar .ui-state-active{z-index:4}.fc-toolbar button:focus{z-index:5}.fc-view-container *,.fc-view-container :after,.fc-view-container :before{box-sizing:content-box}.fc-view,.fc-view>table{position:relative;z-index:1}.fc-basicDay-view .fc-content-skeleton,.fc-basicWeek-view .fc-content-skeleton{padding-top:1px;padding-bottom:1em}.fc-basic-view .fc-body .fc-row{min-height:4em}.fc-row.fc-rigid{overflow:hidden}.fc-row.fc-rigid .fc-content-skeleton{position:absolute;top:0;left:0;right:0}.fc-basic-view .fc-day-number,.fc-basic-view .fc-week-number{padding:0 2px}.fc-basic-view td.fc-day-number,.fc-basic-view td.fc-week-number span{padding-top:2px;padding-bottom:2px}.fc-basic-view .fc-week-number{text-align:center}.fc-basic-view .fc-week-number span{display:inline-block;min-width:1.25em}.fc-ltr .fc-basic-view .fc-day-number{text-align:right}.fc-rtl .fc-basic-view .fc-day-number{text-align:left}.fc-day-number.fc-other-month{opacity:.3;filter:alpha(opacity=30)}.fc-agenda-view .fc-day-grid{position:relative;z-index:2}.fc-agenda-view .fc-day-grid .fc-row{min-height:3em}.fc-agenda-view .fc-day-grid .fc-row .fc-content-skeleton{padding-top:1px;padding-bottom:1em}.fc .fc-axis{vertical-align:middle;padding:0 4px;white-space:nowrap}.fc-ltr .fc-axis{text-align:right}.fc-rtl .fc-axis{text-align:left}.ui-widget td.fc-axis{font-weight:400}.fc-time-grid,.fc-time-grid-container{position:relative;z-index:1}.fc-time-grid{min-height:100%}.fc-time-grid table{border:0 hidden transparent}.fc-time-grid>.fc-bg{z-index:1}.fc-time-grid .fc-slats,.fc-time-grid>hr{position:relative;z-index:2}.fc-time-grid .fc-content-col{position:relative}.fc-time-grid .fc-content-skeleton{position:absolute;z-index:3;top:0;left:0;right:0}.fc-time-grid .fc-business-container{position:relative;z-index:1}.fc-time-grid .fc-bgevent-container{position:relative;z-index:2}.fc-time-grid .fc-highlight-container{position:relative;z-index:3}.fc-time-grid .fc-event-container{position:relative;z-index:4}.fc-time-grid .fc-now-indicator-line{z-index:5}.fc-time-grid .fc-helper-container{position:relative;z-index:6}.fc-time-grid .fc-slats td{height:1.5em;border-bottom:0}.fc-time-grid .fc-slats .fc-minor td{border-top-style:dotted}.fc-time-grid .fc-slats .ui-widget-content{background:none}.fc-time-grid .fc-highlight-container{position:relative}.fc-time-grid .fc-highlight{position:absolute;left:0;right:0}.fc-ltr .fc-time-grid .fc-event-container{margin:0 2.5% 0 2px}.fc-rtl .fc-time-grid .fc-event-container{margin:0 2px 0 2.5%}.fc-time-grid .fc-bgevent,.fc-time-grid .fc-event{position:absolute;z-index:1}.fc-time-grid .fc-bgevent{left:0;right:0}.fc-v-event.fc-not-start{border-top-width:0;padding-top:1px;border-top-left-radius:0;border-top-right-radius:0}.fc-v-event.fc-not-end{border-bottom-width:0;padding-bottom:1px;border-bottom-left-radius:0;border-bottom-right-radius:0}.fc-time-grid-event{overflow:hidden}.fc-time-grid-event.fc-selected{overflow:visible}.fc-time-grid-event.fc-selected .fc-bg{display:none}.fc-time-grid-event .fc-content{overflow:hidden}.fc-time-grid-event .fc-time,.fc-time-grid-event .fc-title{padding:0 1px}.fc-time-grid-event .fc-time{font-size:.85em;white-space:nowrap}.fc-time-grid-event.fc-short .fc-content{white-space:nowrap}.fc-time-grid-event.fc-short .fc-time,.fc-time-grid-event.fc-short .fc-title{display:inline-block;vertical-align:top}.fc-time-grid-event.fc-short .fc-time span{display:none}.fc-time-grid-event.fc-short .fc-time:before{content:attr(data-start)}.fc-time-grid-event.fc-short .fc-time:after{content:\"\\A0-\\A0\"}.fc-time-grid-event.fc-short .fc-title{font-size:.85em;padding:0}.fc-time-grid-event.fc-allow-mouse-resize .fc-resizer{left:0;right:0;bottom:0;height:8px;overflow:hidden;line-height:8px;font-size:11px;font-family:monospace;text-align:center;cursor:s-resize}.fc-time-grid-event.fc-allow-mouse-resize .fc-resizer:after{content:\"=\"}.fc-time-grid-event.fc-selected .fc-resizer{border-radius:5px;border-width:1px;width:8px;height:8px;border-style:solid;border-color:inherit;background:#fff;left:50%;margin-left:-5px;bottom:-5px}.fc-time-grid .fc-now-indicator-line{border-top-width:1px;left:0;right:0}.fc-time-grid .fc-now-indicator-arrow{margin-top:-5px}.fc-ltr .fc-time-grid .fc-now-indicator-arrow{left:0;border-width:5px 0 5px 6px;border-top-color:transparent;border-bottom-color:transparent}.fc-rtl .fc-time-grid .fc-now-indicator-arrow{right:0;border-width:5px 6px 5px 0;border-top-color:transparent;border-bottom-color:transparent}", ""]);
+	exports.push([module.id, "/*!\n * <%= meta.title %> v<%= meta.version %> Stylesheet\n * Docs & License: <%= meta.homepage %>\n * (c) <%= meta.copyright %>\n */.fc{direction:ltr;text-align:left}.fc-rtl{text-align:right}body .fc{font-size:1em}.fc-unthemed .fc-content,.fc-unthemed .fc-divider,.fc-unthemed .fc-popover,.fc-unthemed .fc-row,.fc-unthemed tbody,.fc-unthemed td,.fc-unthemed th,.fc-unthemed thead{border-color:#ddd}.fc-unthemed .fc-popover{background-color:#fff}.fc-unthemed .fc-divider,.fc-unthemed .fc-popover .fc-header{background:#eee}.fc-unthemed .fc-popover .fc-header .fc-close{color:#666}.fc-unthemed .fc-today{background:#fcf8e3}.fc-highlight{background:#bce8f1}.fc-bgevent,.fc-highlight{opacity:.3;filter:alpha(opacity=30)}.fc-bgevent{background:#8fdf82}.fc-nonbusiness{background:#d7d7d7}.fc-icon{display:inline-block;height:1em;line-height:1em;font-size:1em;text-align:center;overflow:hidden;font-family:Courier New,Courier,monospace;-webkit-touch-callout:none;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.fc-icon:after{position:relative}.fc-icon-left-single-arrow:after{content:\"\\2039\";font-weight:700;font-size:200%;top:-7%}.fc-icon-right-single-arrow:after{content:\"\\203A\";font-weight:700;font-size:200%;top:-7%}.fc-icon-left-double-arrow:after{content:\"\\AB\";font-size:160%;top:-7%}.fc-icon-right-double-arrow:after{content:\"\\BB\";font-size:160%;top:-7%}.fc-icon-left-triangle:after{content:\"\\25C4\";font-size:125%;top:3%}.fc-icon-right-triangle:after{content:\"\\25BA\";font-size:125%;top:3%}.fc-icon-down-triangle:after{content:\"\\25BC\";font-size:125%;top:2%}.fc-icon-x:after{content:\"\\D7\";font-size:200%;top:6%}.fc button{box-sizing:border-box;margin:0;height:2.1em;padding:0 .6em;font-size:1em;white-space:nowrap;cursor:pointer}.fc button::-moz-focus-inner{margin:0;padding:0}.fc-state-default{border:1px solid}.fc-state-default.fc-corner-left{border-top-left-radius:4px;border-bottom-left-radius:4px}.fc-state-default.fc-corner-right{border-top-right-radius:4px;border-bottom-right-radius:4px}.fc button .fc-icon{position:relative;top:-.05em;margin:0 .2em;vertical-align:middle}.fc-state-default{background-color:#f5f5f5;background-image:-webkit-gradient(linear,0 0,0 100%,from(#fff),to(#e6e6e6));background-image:-webkit-linear-gradient(top,#fff,#e6e6e6);background-image:linear-gradient(180deg,#fff,#e6e6e6);background-repeat:repeat-x;border-color:#e6e6e6 #e6e6e6 #bfbfbf;border-color:rgba(0,0,0,.1) rgba(0,0,0,.1) rgba(0,0,0,.25);color:#333;text-shadow:0 1px 1px hsla(0,0%,100%,.75);box-shadow:inset 0 1px 0 hsla(0,0%,100%,.2),0 1px 2px rgba(0,0,0,.05)}.fc-state-active,.fc-state-disabled,.fc-state-down,.fc-state-hover{color:#333;background-color:#e6e6e6}.fc-state-hover{color:#333;text-decoration:none;background-position:0 -15px;-webkit-transition:background-position .1s linear;transition:background-position .1s linear}.fc-state-active,.fc-state-down{background-color:#ccc;background-image:none;box-shadow:inset 0 2px 4px rgba(0,0,0,.15),0 1px 2px rgba(0,0,0,.05)}.fc-state-disabled{cursor:default;background-image:none;opacity:.65;filter:alpha(opacity=65);box-shadow:none}.fc-button-group{display:inline-block}.fc .fc-button-group>*{float:left;margin:0 0 0 -1px}.fc .fc-button-group>:first-child{margin-left:0}.fc-popover{position:absolute;box-shadow:0 2px 6px rgba(0,0,0,.15)}.fc-popover .fc-header{padding:2px 4px}.fc-popover .fc-header .fc-title{margin:0 2px}.fc-popover .fc-header .fc-close{cursor:pointer}.fc-ltr .fc-popover .fc-header .fc-title,.fc-rtl .fc-popover .fc-header .fc-close{float:left}.fc-ltr .fc-popover .fc-header .fc-close,.fc-rtl .fc-popover .fc-header .fc-title{float:right}.fc-unthemed .fc-popover{border-width:1px;border-style:solid}.fc-unthemed .fc-popover .fc-header .fc-close{font-size:.9em;margin-top:2px}.fc-popover>.ui-widget-header+.ui-widget-content{border-top:0}.fc-divider{border-style:solid;border-width:1px}hr.fc-divider{height:0;margin:0;padding:0 0 2px;border-width:1px 0}.fc-clear{clear:both}.fc-bg,.fc-bgevent-skeleton,.fc-helper-skeleton,.fc-highlight-skeleton{position:absolute;top:0;left:0;right:0}.fc-bg{bottom:0}.fc-bg table{height:100%}.fc table{width:100%;box-sizing:border-box;table-layout:fixed;border-collapse:collapse;border-spacing:0;font-size:1em}.fc th{text-align:center}.fc td,.fc th{border-style:solid;border-width:1px;padding:0;vertical-align:top}.fc td.fc-today{border-style:double}.fc .fc-row{border-style:solid;border-width:0}.fc-row table{border-left:0 hidden transparent;border-right:0 hidden transparent;border-bottom:0 hidden transparent}.fc-row:first-child table{border-top:0 hidden transparent}.fc-row{position:relative}.fc-row .fc-bg{z-index:1}.fc-row .fc-bgevent-skeleton,.fc-row .fc-highlight-skeleton{bottom:0}.fc-row .fc-bgevent-skeleton table,.fc-row .fc-highlight-skeleton table{height:100%}.fc-row .fc-bgevent-skeleton td,.fc-row .fc-highlight-skeleton td{border-color:transparent}.fc-row .fc-bgevent-skeleton{z-index:2}.fc-row .fc-highlight-skeleton{z-index:3}.fc-row .fc-content-skeleton{position:relative;z-index:4;padding-bottom:2px}.fc-row .fc-helper-skeleton{z-index:5}.fc-row .fc-content-skeleton td,.fc-row .fc-helper-skeleton td{background:none;border-color:transparent;border-bottom:0}.fc-row .fc-content-skeleton tbody td,.fc-row .fc-helper-skeleton tbody td{border-top:0}.fc-scroller{-webkit-overflow-scrolling:touch}.fc-scroller>.fc-day-grid,.fc-scroller>.fc-time-grid{position:relative;width:100%}.fc-event{position:relative;display:block;font-size:.85em;line-height:1.3;border-radius:3px;border:1px solid #3a87ad;background-color:#3a87ad;font-weight:400}.fc-event,.fc-event:hover,.ui-widget .fc-event{color:#fff;text-decoration:none}.fc-event.fc-draggable,.fc-event[href]{cursor:pointer}.fc-not-allowed,.fc-not-allowed .fc-event{cursor:not-allowed}.fc-event .fc-bg{z-index:1;background:#fff;opacity:.25;filter:alpha(opacity=25)}.fc-event .fc-content{position:relative;z-index:2}.fc-event .fc-resizer{position:absolute;z-index:4;display:none}.fc-event.fc-allow-mouse-resize .fc-resizer,.fc-event.fc-selected .fc-resizer{display:block}.fc-event.fc-selected .fc-resizer:before{content:\"\";position:absolute;z-index:9999;top:50%;left:50%;width:40px;height:40px;margin-left:-20px;margin-top:-20px}.fc-event.fc-selected{z-index:9999!important;box-shadow:0 2px 5px rgba(0,0,0,.2)}.fc-event.fc-selected.fc-dragging{box-shadow:0 2px 7px rgba(0,0,0,.3)}.fc-h-event.fc-selected:before{content:\"\";position:absolute;z-index:3;top:-10px;bottom:-10px;left:0;right:0}.fc-ltr .fc-h-event.fc-not-start,.fc-rtl .fc-h-event.fc-not-end{margin-left:0;border-left-width:0;padding-left:1px;border-top-left-radius:0;border-bottom-left-radius:0}.fc-ltr .fc-h-event.fc-not-end,.fc-rtl .fc-h-event.fc-not-start{margin-right:0;border-right-width:0;padding-right:1px;border-top-right-radius:0;border-bottom-right-radius:0}.fc-ltr .fc-h-event .fc-start-resizer,.fc-rtl .fc-h-event .fc-end-resizer{cursor:w-resize;left:-1px}.fc-ltr .fc-h-event .fc-end-resizer,.fc-rtl .fc-h-event .fc-start-resizer{cursor:e-resize;right:-1px}.fc-h-event.fc-allow-mouse-resize .fc-resizer{width:7px;top:-1px;bottom:-1px}.fc-h-event.fc-selected .fc-resizer{border-radius:4px;border-width:1px;width:6px;height:6px;border-style:solid;border-color:inherit;background:#fff;top:50%;margin-top:-4px}.fc-ltr .fc-h-event.fc-selected .fc-start-resizer,.fc-rtl .fc-h-event.fc-selected .fc-end-resizer{margin-left:-4px}.fc-ltr .fc-h-event.fc-selected .fc-end-resizer,.fc-rtl .fc-h-event.fc-selected .fc-start-resizer{margin-right:-4px}.fc-day-grid-event{margin:1px 2px 0;padding:0 1px}.fc-day-grid-event.fc-selected:after{content:\"\";position:absolute;z-index:1;top:-1px;right:-1px;bottom:-1px;left:-1px;background:#000;opacity:.25;filter:alpha(opacity=25)}.fc-day-grid-event .fc-content{white-space:nowrap;overflow:hidden}.fc-day-grid-event .fc-time{font-weight:700}.fc-ltr .fc-day-grid-event.fc-allow-mouse-resize .fc-start-resizer,.fc-rtl .fc-day-grid-event.fc-allow-mouse-resize .fc-end-resizer{margin-left:-2px}.fc-ltr .fc-day-grid-event.fc-allow-mouse-resize .fc-end-resizer,.fc-rtl .fc-day-grid-event.fc-allow-mouse-resize .fc-start-resizer{margin-right:-2px}a.fc-more{margin:1px 3px;font-size:.85em;cursor:pointer;text-decoration:none}a.fc-more:hover{text-decoration:underline}.fc-limited{display:none}.fc-day-grid .fc-row{z-index:1}.fc-more-popover{z-index:2;width:220px}.fc-more-popover .fc-event-container{padding:10px}.fc-now-indicator{position:absolute;border:0 solid red}.fc-unselectable{-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:rgba(0,0,0,0)}.fc-toolbar{text-align:center;margin-bottom:1em}.fc-toolbar .fc-left{float:left}.fc-toolbar .fc-right{float:right}.fc-toolbar .fc-center{display:inline-block}.fc .fc-toolbar>*>*{float:left;margin-left:.75em}.fc .fc-toolbar>*>:first-child{margin-left:0}.fc-toolbar h2{margin:0}.fc-toolbar button{position:relative}.fc-toolbar .fc-state-hover,.fc-toolbar .ui-state-hover{z-index:2}.fc-toolbar .fc-state-down{z-index:3}.fc-toolbar .fc-state-active,.fc-toolbar .ui-state-active{z-index:4}.fc-toolbar button:focus{z-index:5}.fc-view-container *,.fc-view-container :after,.fc-view-container :before{box-sizing:content-box}.fc-view,.fc-view>table{position:relative;z-index:1}.fc-basicDay-view .fc-content-skeleton,.fc-basicWeek-view .fc-content-skeleton{padding-top:1px;padding-bottom:1em}.fc-basic-view .fc-body .fc-row{min-height:4em}.fc-row.fc-rigid{overflow:hidden}.fc-row.fc-rigid .fc-content-skeleton{position:absolute;top:0;left:0;right:0}.fc-basic-view .fc-day-number,.fc-basic-view .fc-week-number{padding:0 2px}.fc-basic-view td.fc-day-number,.fc-basic-view td.fc-week-number span{padding-top:2px;padding-bottom:2px}.fc-basic-view .fc-week-number{text-align:center}.fc-basic-view .fc-week-number span{display:inline-block;min-width:1.25em}.fc-ltr .fc-basic-view .fc-day-number{text-align:right}.fc-rtl .fc-basic-view .fc-day-number{text-align:left}.fc-day-number.fc-other-month{opacity:.3;filter:alpha(opacity=30)}.fc-agenda-view .fc-day-grid{position:relative;z-index:2}.fc-agenda-view .fc-day-grid .fc-row{min-height:3em}.fc-agenda-view .fc-day-grid .fc-row .fc-content-skeleton{padding-top:1px;padding-bottom:1em}.fc .fc-axis{vertical-align:middle;padding:0 4px;white-space:nowrap}.fc-ltr .fc-axis{text-align:right}.fc-rtl .fc-axis{text-align:left}.ui-widget td.fc-axis{font-weight:400}.fc-time-grid,.fc-time-grid-container{position:relative;z-index:1}.fc-time-grid{min-height:100%}.fc-time-grid table{border:0 hidden transparent}.fc-time-grid>.fc-bg{z-index:1}.fc-time-grid .fc-slats,.fc-time-grid>hr{position:relative;z-index:2}.fc-time-grid .fc-content-col{position:relative}.fc-time-grid .fc-content-skeleton{position:absolute;z-index:3;top:0;left:0;right:0}.fc-time-grid .fc-business-container{position:relative;z-index:1}.fc-time-grid .fc-bgevent-container{position:relative;z-index:2}.fc-time-grid .fc-highlight-container{z-index:3}.fc-time-grid .fc-event-container{position:relative;z-index:4}.fc-time-grid .fc-now-indicator-line{z-index:5}.fc-time-grid .fc-helper-container{position:relative;z-index:6}.fc-time-grid .fc-slats td{height:1.5em;border-bottom:0}.fc-time-grid .fc-slats .fc-minor td{border-top-style:dotted}.fc-time-grid .fc-slats .ui-widget-content{background:none}.fc-time-grid .fc-highlight-container{position:relative}.fc-time-grid .fc-highlight{position:absolute;left:0;right:0}.fc-ltr .fc-time-grid .fc-event-container{margin:0 2.5% 0 2px}.fc-rtl .fc-time-grid .fc-event-container{margin:0 2px 0 2.5%}.fc-time-grid .fc-bgevent,.fc-time-grid .fc-event{position:absolute;z-index:1}.fc-time-grid .fc-bgevent{left:0;right:0}.fc-v-event.fc-not-start{border-top-width:0;padding-top:1px;border-top-left-radius:0;border-top-right-radius:0}.fc-v-event.fc-not-end{border-bottom-width:0;padding-bottom:1px;border-bottom-left-radius:0;border-bottom-right-radius:0}.fc-time-grid-event{overflow:hidden}.fc-time-grid-event.fc-selected{overflow:visible}.fc-time-grid-event.fc-selected .fc-bg{display:none}.fc-time-grid-event .fc-content{overflow:hidden}.fc-time-grid-event .fc-time,.fc-time-grid-event .fc-title{padding:0 1px}.fc-time-grid-event .fc-time{font-size:.85em;white-space:nowrap}.fc-time-grid-event.fc-short .fc-content{white-space:nowrap}.fc-time-grid-event.fc-short .fc-time,.fc-time-grid-event.fc-short .fc-title{display:inline-block;vertical-align:top}.fc-time-grid-event.fc-short .fc-time span{display:none}.fc-time-grid-event.fc-short .fc-time:before{content:attr(data-start)}.fc-time-grid-event.fc-short .fc-time:after{content:\"\\A0-\\A0\"}.fc-time-grid-event.fc-short .fc-title{font-size:.85em;padding:0}.fc-time-grid-event.fc-allow-mouse-resize .fc-resizer{left:0;right:0;bottom:0;height:8px;overflow:hidden;line-height:8px;font-size:11px;font-family:monospace;text-align:center;cursor:s-resize}.fc-time-grid-event.fc-allow-mouse-resize .fc-resizer:after{content:\"=\"}.fc-time-grid-event.fc-selected .fc-resizer{border-radius:5px;border-width:1px;width:8px;height:8px;border-style:solid;border-color:inherit;background:#fff;left:50%;margin-left:-5px;bottom:-5px}.fc-time-grid .fc-now-indicator-line{border-top-width:1px;left:0;right:0}.fc-time-grid .fc-now-indicator-arrow{margin-top:-5px}.fc-ltr .fc-time-grid .fc-now-indicator-arrow{left:0;border-width:5px 0 5px 6px;border-top-color:transparent;border-bottom-color:transparent}.fc-rtl .fc-time-grid .fc-now-indicator-arrow{right:0;border-width:5px 6px 5px 0;border-top-color:transparent;border-bottom-color:transparent}", ""]);
 	
 	// exports
 

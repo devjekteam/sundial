@@ -52,38 +52,40 @@ ConsultationKitSdk.prototype.createBooking = function(args) {
 }
 
 ConsultationKitSdk.prototype.findTime = function(args) {
-  var addDay = function (date, amount) {
-      return new Date(date.valueOf() + amount * (1000 * 60 * 60 * 24));
-  };
-  var toBeginningOfDay = function (date) {
-      return date.setHours(0,0,0,0);
-  };
-
-  var toEndOfDay = function (date) {
-    return date.setHours(23,59,59,99);
-  }
-
   function addToTimes(availabilities, times) {
     for (var i = 0; i < availabilities.length; i++) {
       times.push({
         start: availabilities[i].start_datetime,
-        end: availabilities[i].end_datetime
+        end: availabilities[i].end_datetime,
+        availabilityId: availabilities[i].availability_id
       })
     }
   }
 
   function getAvailabilities(days, times, baseUrl, apiToken) {
-      var now = new Date();
-      var start = toBeginningOfDay(now);
-      var end = toEndOfDay(now);
+      var now = moment();
+      var end = moment(now).endOf('day');
 
       const availabilityPromises = [];
 
       for (var i = 0; i < days; i++) {
-        const start_datetime = RFC3339DateString(addDay(start, i));
-        const end_datetime = RFC3339DateString(addDay(end, i));
+        var start_time;
 
-        const url = baseUrl + 'calendars/' + args.calendarId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
+        if (i != 0) {
+          start_time = moment(now).startOf('day');
+        } else {
+          start_time = moment(now);
+        }
+
+        const start_datetime = RFC3339DateString(moment(start_time).add(i, 'day'));
+        const end_datetime = RFC3339DateString(moment(end).add(i, 'day'));
+
+        var url;
+        if (args.editCalendar) {
+          url = baseUrl + 'users/' + args.userId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
+        } else {
+          url = baseUrl + 'calendars/' + args.calendarId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
+        }
         availabilityPromises.push(
           $.ajax({'url': url, 'type':'GET',
                   'headers': {
@@ -110,16 +112,7 @@ ConsultationKitSdk.prototype.findTime = function(args) {
 }
 
 ConsultationKitSdk.prototype.getUserTimezone = function(args) {
-  console.log(args);
-  // $.ajax({
-  //   url: this.baseUrl + 'users/' + this.userId + '/timezone',
-  //   type: 'GET',
-  //   success: function(result) {
-  //     console.log("DONE BITCH");
-  //     return result
-  //   }});
     return new Promise(function(resolve, reject) {
-
         resolve({data :{
             timezone: 'America/New_York',
             utc_offset: -5
@@ -129,14 +122,38 @@ ConsultationKitSdk.prototype.getUserTimezone = function(args) {
 };
 
 
+ConsultationKitSdk.prototype.createAvailability = function(args) {
+  // length in minutes
+  var length = args.end.diff(args.start) / (60000);
+
+  var payload = {
+    user_id: args.userId,
+    start_datetime: RFC3339DateString(args.start),
+    length_minutes: length
+  }
+
+  return $.ajax({
+    url: this.baseUrl + 'availabilities',
+    type: 'POST',
+    data: JSON.stringify(payload),
+    contentType: 'application/json',
+    dataType: "json",
+    'headers': {
+      "authorization": args.apiToken
+    }
+  })
+}
+
+
 module.exports = ConsultationKitSdk;
 
+// takes moment date
 function RFC3339DateString(d){
   function pad(n){return n<10 ? '0'+n : n}
-  return d.getUTCFullYear()+'-'
-      + pad(d.getUTCMonth()+1)+'-'
-      + pad(d.getUTCDate())+'T'
-      + pad(d.getUTCHours())+':'
-      + pad(d.getUTCMinutes())+':'
-      + pad(d.getUTCSeconds())+'Z'
+  return d.utc().year()+'-'
+      + pad(d.utc().month()+1)+'-'
+      + pad(d.utc().date())+'T'
+      + pad(d.utc().hours())+':'
+      + pad(d.utc().minutes())+':'
+      + pad(d.utc().seconds())+'Z'
 }

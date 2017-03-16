@@ -15,6 +15,42 @@ ConsultationKitSdk.prototype.setUser = function(userId, apiToken) {
   this.apiToken = apiToken;
 }
 
+ConsultationKitSdk.prototype.createPayment = function(calendarId) {
+
+    var url = this.baseUrl + 'paypal/auth/payments';
+    return $.ajax({'url': url, 'type':'POST',
+            'headers': {
+                "authorization": this.apiToken
+            },
+            data: JSON.stringify({
+                calendar_id: calendarId
+            }),
+            contentType: "application/json"
+        }
+    );
+}
+
+ConsultationKitSdk.prototype.createBooking = function(args) {
+
+    console.log('args: ', args);
+    var url = this.baseUrl + 'auth/bookings';
+    return $.ajax({'url': url, 'type':'POST',
+            'headers': {
+                "authorization": this.apiToken
+            },
+            contentType: "application/json",
+            data: JSON.stringify({
+                start_datetime: args.start_datetime,
+                end_datetime: args.end_datetime,
+                calendar_id: args.calendar_id,
+                payment_id: args.payment_id,
+                payer_id: args.payer_id,
+                client: args.client
+            })
+        }
+    );
+}
+
 ConsultationKitSdk.prototype.findTime = function(args) {
   var addDay = function (date, amount) {
       return new Date(date.valueOf() + amount * (1000 * 60 * 60 * 24));
@@ -41,14 +77,14 @@ ConsultationKitSdk.prototype.findTime = function(args) {
       var start = toBeginningOfDay(now);
       var end = toEndOfDay(now);
 
-      const availabiliyPromises = [];
+      const availabilityPromises = [];
 
       for (var i = 0; i < days; i++) {
         const start_datetime = RFC3339DateString(addDay(start, i));
         const end_datetime = RFC3339DateString(addDay(end, i));
 
         const url = baseUrl + 'calendars/' + args.calendarId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
-        availabiliyPromises.push(
+        availabilityPromises.push(
           $.ajax({'url': url, 'type':'GET',
                   'headers': {
                     "authorization": apiToken
@@ -61,7 +97,7 @@ ConsultationKitSdk.prototype.findTime = function(args) {
             );
       }
 
-      return availabiliyPromises;
+      return availabilityPromises;
   }
 
   var times = [];
@@ -75,14 +111,22 @@ ConsultationKitSdk.prototype.findTime = function(args) {
 
 ConsultationKitSdk.prototype.getUserTimezone = function(args) {
   console.log(args);
-  $.ajax({
-    url: this.baseUrl + 'users/' + this.userId + '/timezone',
-    type: 'GET',
-    success: function(result) {
-      console.log("DONE BITCH");
-      return result
-    }});
-}
+  // $.ajax({
+  //   url: this.baseUrl + 'users/' + this.userId + '/timezone',
+  //   type: 'GET',
+  //   success: function(result) {
+  //     console.log("DONE BITCH");
+  //     return result
+  //   }});
+    return new Promise(function(resolve, reject) {
+
+        resolve({data :{
+            timezone: 'America/New_York',
+            utc_offset: -5
+        }})
+
+    })
+};
 
 
 module.exports = ConsultationKitSdk;

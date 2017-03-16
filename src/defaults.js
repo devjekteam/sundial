@@ -11,7 +11,7 @@ var primary = {
   avatar: '',
   autoload: true,
   includeStyles: true,
-  showCredits: true,
+  showCredits: false,
   goToFirstEvent: true,
   bookingGraph: 'instant',
   possibleLengths: {
@@ -19,18 +19,23 @@ var primary = {
     'Long': '2 hour'
   },
   bookingFields: {
-    name: {
-      placeholder: 'Full name',
+    first_name: {
+      placeholder: 'John',
+      prefilled: false,
+      locked: false
+    },
+    last_name: {
+      placeholder: 'Doe',
       prefilled: false,
       locked: false
     },
     email: {
-      placeholder: 'E-mail',
+      placeholder: 'john.doe@gmail.com',
       prefilled: false,
       locked: false
     },
     comment: {
-      enabled: true,
+      enabled: false,
       placeholder: 'Comment',
       prefilled: false,
       required: false,
@@ -87,8 +92,7 @@ var primary = {
     showTimezoneHelper: true,
     timeDateFormat: '12h-mdy-sun',
     strings: {
-      submitText: 'Book it',
-      successMessageTitle: 'Thanks!',
+      successMessageTitle: 'Your consultation has been booked!',
       timezoneHelperLoading: 'Loading..',
       timezoneHelperDifferent: 'Your timezone is %s hours %s of %s (calendar shown in your local time)',
       timezoneHelperSame: 'You are in the same timezone as %s'
@@ -112,7 +116,7 @@ var bookingInstant = {
   },
   localization: {
     strings: {
-      successMessageBody: 'An invitation has been sent to: <br /> %s <br /><br /> Please accept the invitation to confirm the booking.'
+      successMessageBody: '<p>An invitation has been sent to: %s </p><p>Please accept the invitation to confirm the booking.</p>'
     }
   }
 

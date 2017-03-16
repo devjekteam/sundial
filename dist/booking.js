@@ -271,7 +271,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  var decideCalendarSize = function() {
 	
 	    var view = 'agendaWeek';
-	    var height = 420;
+	    var height = 480;
 	    var rootWidth = rootTarget.width();
 	
 	    if (rootWidth < 480) {
@@ -349,13 +349,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	      start:                moment(eventData.start).format(),
 	      end:                  moment(eventData.end).format(),
 	      closeIcon:            __webpack_require__(55),
-	      checkmarkIcon:        __webpack_require__(56),
-	      loadingIcon:          __webpack_require__(57),
-	      errorIcon:            __webpack_require__(58),
-	      submitText:           config.localization.strings.submitText,
 	      successMessageTitle:  config.localization.strings.successMessageTitle,
 	      successMessageBody:   interpolate.sprintf(config.localization.strings.successMessageBody, '<span class="booked-email"></span>'),
-	      fields:               config.bookingFields
+	      fields:               config.bookingFields,
+	      meetingCost:          config.meetingCost
 	    }, {
 	      formFields: fieldsTemplate
 	    }));
@@ -365,18 +362,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	      hideBookingPage();
 	    });
 	
-	    var form = $("#ck-form");
-	    var bookingFields = form.find(".bookingjs-form-fields");
-	
-	    form.submit(function(e) {
-	      submitBookingForm(this, e);
-	    });
-	
-	    // Show powered by Timekit message
-	    if (config.showCredits) {
-	      renderPoweredByMessage(bookingPageTarget);
-	    }
-	
 	    $(document).on('keyup', function(e) {
 	      // escape key maps to keycode `27`
 	      if (e.keyCode === 27) { hideBookingPage(); }
@@ -384,43 +369,68 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	    rootTarget.append(bookingPageTarget);
 	
+	    var form = $("#ck-form");
 	    paypal.Button.render({
-	
 	      env: 'sandbox', // Specify 'sandbox' for the test environment
 	      style: {
 	        size: 'medium',
 	        color: 'blue',
-	        shape: 'rect'
+	        shape: 'pill'
 	      },
 	      payment: function(resolve, reject) {
-	        var CREATE_PAYMENT_URL = 'http://localhost:5000/paypal/auth/payments';
+	        var formDataArr = form.serializeArray();
 	
-	        paypal.request.post(CREATE_PAYMENT_URL, { user_id: 3 })
-	            .then(function(data) {
-	              bookingFields.append("<input type='text' class='bookingjs-form-input hidden' name='payment_id' value='"+data.payment_id+"'/>");
+	        $('.bookingjs-form-input').removeClass('bookingjs-error');
+	        $('.bookingjs-error').text('');
+	        var client = {};
+	        var hasErrors = false;
+	        $.each(formDataArr, function(i, prop) {
+	          client[prop.name] = prop.value;
+	          if (prop.value === '') {
+	            $('#'+prop.name + '-error').text('This field is required!');
+	            $('#bookingjs-' + prop.name).addClass('bookingjs-error');
+	            hasErrors = true;
+	          }
+	        });
+	
+	        if (hasErrors) return reject('All fields are required');
+	
+	        consultationKitSkd.createPayment(config.calendar)
+	            .done(function(data) {
 	              resolve(data.payment_id);
 	            })
-	            .catch(function(err) {
-	              reject(err);
-	            });
+	            .fail(function(err) {
+	              reject(err.statusText);
+	            })
 	      },
 	
 	      onAuthorize: function(data) {
-	        // Note: you can display a confirmation page before executing
 	
-	        var EXECUTE_PAYMENT_URL = 'http://localhost:5000/paypal/auth/payments/execute';
+	        var formDataArr = form.serializeArray();
+	        var client = {};
+	        $.each(formDataArr, function(i, prop) {
+	            client[prop.name] = prop.value;
+	        });
 	
-	        paypal.request.post(EXECUTE_PAYMENT_URL,
-	            { payment_id: data.paymentID, payer_id: data.payerID })
-	
-	            .then(function(data) {
-	              bookingFields.append("<input type='text' class='bookingjs-form-input hidden' name='payer_id' value='"+data.payerID+"'/>");
+	        var bookingArgs = {
+	          start_datetime: moment(eventData.start).format(),
+	          end_datetime: moment(eventData.end).format(),
+	          calendar_id: config.calendar,
+	          payment_id: data.paymentID,
+	          payer_id: data.payerID,
+	          client: client
+	        };
+	        consultationKitSkd.createBooking(bookingArgs)
+	            .done(function() {
 	              $("#paypal-button").hide();
-	              $("#book-button").show();
+	              $("#booking-page-title").text('Booking Complete!');
+	              $(".bookingjs-form-fields").hide();
+	              $(".bookingjs-form-success-message .booked-email").text(bookingArgs.client.email);
+	              $(".bookingjs-form-success-message").show();
 	            })
-	            .catch(function(err) {
-	
-	            });
+	            .fail(function(err) {
+	                console.log('error: ', err)
+	            })
 	      }
 	    }, '#paypal-button');
 	
@@ -548,25 +558,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	  };
 	
-	  // Render the powered by Timekit message
-	  var renderPoweredByMessage = function(pageTarget) {
-	
-	    var campaignName = 'widget'
-	    var campaignSource = window.location.hostname.replace(/\./g, '-')
-	    if (config.widgetSlug) { campaignName = 'hosted-widget'; }
-	    if (config.widgetId) { campaignName = 'embedded-widget'; }
-	
-	    var template = __webpack_require__(59);
-	    var timekitLogo = __webpack_require__(60);
-	    var poweredTarget = $(template.render({
-	      timekitLogo: timekitLogo,
-	      campaignName: campaignName,
-	      campaignSource: campaignSource
-	    }));
-	
-	    pageTarget.append(poweredTarget);
-	
-	  };
 	
 	  // Set config defaults
 	  var setConfigDefaults = function(suppliedConfig) {
@@ -21141,6 +21132,42 @@ return /******/ (function(modules) { // webpackBootstrap
 	  this.apiToken = apiToken;
 	}
 	
+	ConsultationKitSdk.prototype.createPayment = function(calendarId) {
+	
+	    var url = this.baseUrl + 'paypal/auth/payments';
+	    return $.ajax({'url': url, 'type':'POST',
+	            'headers': {
+	                "authorization": this.apiToken
+	            },
+	            data: JSON.stringify({
+	                calendar_id: calendarId
+	            }),
+	            contentType: "application/json"
+	        }
+	    );
+	}
+	
+	ConsultationKitSdk.prototype.createBooking = function(args) {
+	
+	    console.log('args: ', args);
+	    var url = this.baseUrl + 'auth/bookings';
+	    return $.ajax({'url': url, 'type':'POST',
+	            'headers': {
+	                "authorization": this.apiToken
+	            },
+	            contentType: "application/json",
+	            data: JSON.stringify({
+	                start_datetime: args.start_datetime,
+	                end_datetime: args.end_datetime,
+	                calendar_id: args.calendar_id,
+	                payment_id: args.payment_id,
+	                payer_id: args.payer_id,
+	                client: args.client
+	            })
+	        }
+	    );
+	}
+	
 	ConsultationKitSdk.prototype.findTime = function(args) {
 	  var addDay = function (date, amount) {
 	      return new Date(date.valueOf() + amount * (1000 * 60 * 60 * 24));
@@ -21167,14 +21194,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	      var start = toBeginningOfDay(now);
 	      var end = toEndOfDay(now);
 	
-	      const availabiliyPromises = [];
+	      const availabilityPromises = [];
 	
 	      for (var i = 0; i < days; i++) {
 	        const start_datetime = RFC3339DateString(addDay(start, i));
 	        const end_datetime = RFC3339DateString(addDay(end, i));
 	
 	        const url = baseUrl + 'calendars/' + args.calendarId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
-	        availabiliyPromises.push(
+	        availabilityPromises.push(
 	          $.ajax({'url': url, 'type':'GET',
 	                  'headers': {
 	                    "authorization": apiToken
@@ -21187,7 +21214,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	            );
 	      }
 	
-	      return availabiliyPromises;
+	      return availabilityPromises;
 	  }
 	
 	  var times = [];
@@ -21201,14 +21228,22 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	ConsultationKitSdk.prototype.getUserTimezone = function(args) {
 	  console.log(args);
-	  $.ajax({
-	    url: this.baseUrl + 'users/' + this.userId + '/timezone',
-	    type: 'GET',
-	    success: function(result) {
-	      console.log("DONE BITCH");
-	      return result
-	    }});
-	}
+	  // $.ajax({
+	  //   url: this.baseUrl + 'users/' + this.userId + '/timezone',
+	  //   type: 'GET',
+	  //   success: function(result) {
+	  //     console.log("DONE BITCH");
+	  //     return result
+	  //   }});
+	    return new Promise(function(resolve, reject) {
+	
+	        resolve({data :{
+	            timezone: 'America/New_York',
+	            utc_offset: -5
+	        }})
+	
+	    })
+	};
 	
 	
 	module.exports = ConsultationKitSdk;
@@ -22722,7 +22757,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  avatar: '',
 	  autoload: true,
 	  includeStyles: true,
-	  showCredits: true,
+	  showCredits: false,
 	  goToFirstEvent: true,
 	  bookingGraph: 'instant',
 	  possibleLengths: {
@@ -22730,18 +22765,23 @@ return /******/ (function(modules) { // webpackBootstrap
 	    'Long': '2 hour'
 	  },
 	  bookingFields: {
-	    name: {
-	      placeholder: 'Full name',
+	    first_name: {
+	      placeholder: 'John',
+	      prefilled: false,
+	      locked: false
+	    },
+	    last_name: {
+	      placeholder: 'Doe',
 	      prefilled: false,
 	      locked: false
 	    },
 	    email: {
-	      placeholder: 'E-mail',
+	      placeholder: 'john.doe@gmail.com',
 	      prefilled: false,
 	      locked: false
 	    },
 	    comment: {
-	      enabled: true,
+	      enabled: false,
 	      placeholder: 'Comment',
 	      prefilled: false,
 	      required: false,
@@ -22798,8 +22838,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    showTimezoneHelper: true,
 	    timeDateFormat: '12h-mdy-sun',
 	    strings: {
-	      submitText: 'Book it',
-	      successMessageTitle: 'Thanks!',
+	      successMessageTitle: 'Your consultation has been booked!',
 	      timezoneHelperLoading: 'Loading..',
 	      timezoneHelperDifferent: 'Your timezone is %s hours %s of %s (calendar shown in your local time)',
 	      timezoneHelperSame: 'You are in the same timezone as %s'
@@ -22823,7 +22862,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  },
 	  localization: {
 	    strings: {
-	      successMessageBody: 'An invitation has been sent to: <br /> %s <br /><br /> Please accept the invitation to confirm the booking.'
+	      successMessageBody: '<p>An invitation has been sent to: %s </p><p>Please accept the invitation to confirm the booking.</p>'
 	    }
 	  }
 	
@@ -23369,10 +23408,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	exports = module.exports = __webpack_require__(38)();
 	// imports
-	exports.push([module.id, "@import url(https://fonts.googleapis.com/css?family=Open+Sans:400,600);", ""]);
+	exports.push([module.id, "@import url(https://fonts.googleapis.com/css?family=Roboto:200,300,400);", ""]);
 	
 	// module
-	exports.push([module.id, "/*!\n * Booking.js\n * http://timekit.io\n * (c) 2015 Timekit Inc.\n */.bookingjs{position:relative;font-family:Open Sans,Helvetica,Tahoma,Arial,sans-serif;font-size:13px;border-radius:4px;background-color:#fff;box-shadow:0 2px 4px 0 rgba(0,0,0,.2);margin:20px auto;max-width:972px;z-index:10;opacity:0;color:#333;border-top:1px solid #ececec}.bookingjs.show{-webkit-transition:opacity .3s ease;transition:opacity .3s ease;opacity:1}.bookingjs.has-avatar{margin-top:60px}.is-small.has-avatar.has-displayname .bookingjs-calendar .fc-toolbar{padding-bottom:24px}.is-small .bookingjs-calendar .fc-toolbar>.fc-right>button.fc-today-button{position:absolute;left:15px}.bookingjs-timezonehelper{color:#aeaeae;text-align:center;padding:7px 10px;background-color:#fbfbfb;border-top:1px solid #ececec;min-height:15px;z-index:20;border-radius:0 0 4px 4px}.bookingjs-timezoneicon{width:10px;margin-right:5px}.bookingjs-avatar{position:absolute;top:-50px;left:50%;-webkit-transform:translateX(-50%);transform:translateX(-50%);border-radius:150px;border:3px solid #fff;box-shadow:0 1px 3px 0 rgba(0,0,0,.13);overflow:hidden;z-index:40;background-color:#fff}.is-small .bookingjs-avatar{top:-40px}.bookingjs-avatar img{max-width:100%;vertical-align:middle;display:inline-block;width:80px;height:80px}.is-small .bookingjs-avatar img{width:70px;height:70px}.bookingjs-displayname{position:absolute;top:0;left:0;padding:15px 20px;color:#333;font-weight:600}.is-small .bookingjs-displayname{text-align:center;left:90px;right:90px;box-sizing:border-box}.is-small.has-avatar .bookingjs-displayname{top:44px;padding:0 20px}.bookingjs-bookpage{position:absolute;height:100%;width:100%;top:0;left:0;background-color:#fbfbfb;z-index:30;opacity:0;-webkit-transition:opacity .2s ease;transition:opacity .2s ease;border-radius:4px}.bookingjs-bookpage.show{opacity:1}.bookingjs-bookpage-close{position:absolute;top:0;right:0;padding:18px;-webkit-transition:opacity .2s ease;transition:opacity .2s ease;opacity:.3}.bookingjs-bookpage-close:hover{opacity:1}.bookingjs-bookpage-date,.bookingjs-bookpage h2{text-align:center;font-size:34px;font-weight:400;margin-top:70px;margin-bottom:10px}.is-small .bookingjs-bookpage-date,.is-small .bookingjs-bookpage h2{font-size:27px;margin-top:60px}.bookingjs-bookpage-time,.bookingjs-bookpage h3{text-align:center;font-size:17px;font-weight:400;margin-bottom:50px;margin-top:10px}.is-small .bookingjs-bookpage-time,.is-small .bookingjs-bookpage h3{font-size:15px;margin-bottom:35px}.bookingjs-closeicon{height:15px;width:15px}.bookingjs-form{width:350px;position:relative;margin:0 auto;text-align:center}.is-small .bookingjs-form{width:90%}.bookingjs-form-box{position:relative;box-shadow:0 1px 3px 0 rgba(0,0,0,.1);overflow:hidden;background-color:#fff;line-height:0}.bookingjs-form-success-message{position:absolute;top:-999px;left:0;right:0;padding:30px;background-color:#fff;opacity:0;-webkit-transition:opacity .3s ease;transition:opacity .3s ease;line-height:normal}.is-small .bookingjs-form-success-message{padding:22px 10px}.bookingjs-form-success-message .title{font-size:20px;display:block;margin-bottom:25px}.bookingjs-form-success-message .body{display:block}.bookingjs-form-success-message .body .booked-email{color:#aeaeae}.bookingjs-form.success .bookingjs-form-success-message{opacity:1;top:0;bottom:0}.bookingjs-form-input,.bookingjs-form input,.bookingjs-form input:invalid textarea,.bookingjs-form textarea:invalid{-webkit-transition:box-shadow .2s ease;transition:box-shadow .2s ease;width:100%;padding:15px 25px;margin:0;border:0 solid #ececec;font-size:1em;box-shadow:inset 0 0 1px 1px hsla(0,0%,100%,0);text-align:left;box-sizing:border-box;line-height:normal;font-family:Open Sans,Helvetica,Tahoma,Arial,sans-serif;color:#333;overflow:auto}.bookingjs-form-input:focus,.bookingjs-form input:focus,.bookingjs-form input:invalid textarea:focus,.bookingjs-form textarea:invalid:focus{outline:0;box-shadow:inset 0 0 1px 1px #008ed6}.bookingjs-form-input.hidden,.bookingjs-form input.hidden,.bookingjs-form input:invalid textarea.hidden,.bookingjs-form textarea:invalid.hidden{display:none}.bookingjs-form-input:-moz-read-only,.bookingjs-form input:-moz-read-only,.bookingjs-form input:invalid textarea:-moz-read-only,.bookingjs-form textarea:invalid:-moz-read-only{cursor:not-allowed;font-style:italic}.bookingjs-form-input:read-only,.bookingjs-form input:invalid textarea:read-only,.bookingjs-form input:read-only,.bookingjs-form textarea:invalid:read-only{cursor:not-allowed;font-style:italic}.bookingjs-form-input:-moz-read-only:focus,.bookingjs-form input:-moz-read-only:focus,.bookingjs-form input:invalid textarea:-moz-read-only:focus,.bookingjs-form textarea:invalid:-moz-read-only:focus{box-shadow:inset 0 0 1px 1px #d8d8d8}.bookingjs-form-input:read-only:focus,.bookingjs-form input:invalid textarea:read-only:focus,.bookingjs-form input:read-only:focus,.bookingjs-form textarea:invalid:read-only:focus{box-shadow:inset 0 0 1px 1px #d8d8d8}.bookingjs-form-button{position:relative;-webkit-transition:background-color .2s,max-width .3s;transition:background-color .2s,max-width .3s;display:inline-block;padding:13px 25px;background-color:#008ed6;text-transform:uppercase;box-shadow:0 1px 3px 0 rgba(0,0,0,.15);color:#fff;border:0;border-radius:3px;font-size:1.1em;font-weight:600;margin-top:30px;cursor:pointer;height:44px;outline:0;text-align:center;max-width:200px}.bookingjs-form-button .error-text,.bookingjs-form-button .loading-text,.bookingjs-form-button .success-text{-webkit-transition:opacity .3s ease;transition:opacity .3s ease;position:absolute;top:13px;left:50%;-webkit-transform:translateX(-50%);transform:translateX(-50%);opacity:0}.bookingjs-form-button .inactive-text{white-space:nowrap;opacity:1}.bookingjs-form-button .loading-text svg{height:19px;width:19px;-webkit-animation:spin .6s infinite linear;animation:spin .6s infinite linear}.bookingjs-form-button .error-text svg{height:15px;width:15px;margin-top:2px}.bookingjs-form-button .success-text svg{height:15px;margin-top:2px;-webkit-transform:scale(0);transform:scale(0);-webkit-transition:-webkit-transform .6s ease;transition:-webkit-transform .6s ease;transition:transform .6s ease;transition:transform .6s ease,-webkit-transform .6s ease}.bookingjs-form-button:focus,.bookingjs-form-button:hover{background-color:#006ca3}.bookingjs-form-button.button-shake{-webkit-animation:shake .5s 1 ease;animation:shake .5s 1 ease}.bookingjs-form.loading .bookingjs-form-button,.bookingjs-form.loading .bookingjs-form-button:hover{max-width:80px;background-color:#b1b1b1;cursor:not-allowed}.bookingjs-form.loading .bookingjs-form-button .inactive-text,.bookingjs-form.loading .bookingjs-form-button:hover .inactive-text{opacity:0}.bookingjs-form.loading .bookingjs-form-button .loading-text,.bookingjs-form.loading .bookingjs-form-button:hover .loading-text{opacity:1}.bookingjs-form.error .bookingjs-form-button,.bookingjs-form.error .bookingjs-form-button:hover{max-width:80px;background-color:#d83b46;cursor:not-allowed}.bookingjs-form.error .bookingjs-form-button .inactive-text,.bookingjs-form.error .bookingjs-form-button:hover .inactive-text{opacity:0}.bookingjs-form.error .bookingjs-form-button .error-text,.bookingjs-form.error .bookingjs-form-button:hover .error-text{opacity:1}.bookingjs-form.success .bookingjs-form-button,.bookingjs-form.success .bookingjs-form-button:hover{max-width:80px;background-color:#5baf56;cursor:not-allowed}.bookingjs-form.success .bookingjs-form-button .inactive-text,.bookingjs-form.success .bookingjs-form-button:hover .inactive-text{opacity:0}.bookingjs-form.success .bookingjs-form-button .success-text,.bookingjs-form.success .bookingjs-form-button:hover .success-text{opacity:1}.bookingjs-form.success .bookingjs-form-button .success-text svg,.bookingjs-form.success .bookingjs-form-button:hover .success-text svg{-webkit-transform:scale(1);transform:scale(1)}.bookingjs-poweredby{position:absolute;bottom:0;left:0;right:0;text-align:center;padding:7px 10px}.bookingjs-poweredby a{-webkit-transition:color .2s ease;transition:color .2s ease;color:#aeaeae;text-decoration:none}.bookingjs-poweredby a svg path{-webkit-transition:fill .2s ease;transition:fill .2s ease;fill:#aeaeae}.bookingjs-poweredby a:hover{color:#333}.bookingjs-poweredby a:hover svg path{fill:#333}.bookingjs-timekitlogo{width:15px;height:15px;margin-right:5px;vertical-align:sub}.bookingjs #paypal-button{margin:15px auto;width:230px;height:36px;overflow:hidden}.bookingjs #book-button{display:none}", ""]);
+	exports.push([module.id, "/*!\n * Booking.js\n * http://timekit.io\n * (c) 2015 Timekit Inc.\n */.bookingjs{position:relative;font-family:Roboto,Helvetica,Tahoma,Arial,sans-serif;font-size:13px;border-radius:4px;background-color:#fff;box-shadow:0 2px 4px 0 rgba(0,0,0,.2);margin:20px auto;max-width:972px;z-index:10;opacity:0;color:#666;border-top:1px solid #ececec}.bookingjs.show{-webkit-transition:opacity .3s ease;transition:opacity .3s ease;opacity:1}.bookingjs.has-avatar{margin-top:60px}.bookingjs.has-avatar .bookingjs-bookpage-header{padding-top:35px}.is-small.has-avatar.has-displayname .bookingjs-calendar .fc-toolbar{padding-bottom:24px}.is-small .bookingjs-calendar .fc-toolbar>.fc-right>button.fc-today-button{position:absolute;left:15px}.bookingjs-timezonehelper{color:#aeaeae;text-align:center;padding:7px 10px;background-color:#f5f7f9;border-top:1px solid #ececec;min-height:15px;z-index:20;border-radius:0 0 4px 4px}.bookingjs-timezoneicon{width:10px;margin-right:5px}.bookingjs-avatar{position:absolute;top:-50px;left:50%;-webkit-transform:translateX(-50%);transform:translateX(-50%);border-radius:150px;border:3px solid #fff;box-shadow:0 1px 3px 0 rgba(0,0,0,.13);overflow:hidden;z-index:40;background-color:#fff}.is-small .bookingjs-avatar{top:-40px}.bookingjs-avatar img{max-width:100%;vertical-align:middle;display:inline-block;width:80px;height:80px}.is-small .bookingjs-avatar img{width:70px;height:70px}.bookingjs-displayname{position:absolute;top:0;left:0;padding:15px 20px;color:#666;font-weight:600}.is-small .bookingjs-displayname{text-align:center;left:90px;right:90px;box-sizing:border-box}.is-small.has-avatar .bookingjs-displayname{top:44px;padding:0 20px}.bookingjs-bookpage{position:absolute;height:100%;width:100%;top:0;left:0;background-color:#fff;z-index:30;opacity:0;-webkit-transition:opacity .2s ease;transition:opacity .2s ease;border-radius:4px}.bookingjs-bookpage.show{opacity:1}.bookingjs-bookpage-close{position:absolute;top:0;right:0;padding:18px;-webkit-transition:opacity .2s ease;transition:opacity .2s ease;opacity:.3;z-index:9}.bookingjs-bookpage-close:hover{opacity:1}.bookingjs-bookpage-container{max-width:600px;margin:0 auto;padding-bottom:70px}.bookingjs-bookpage-header{border-bottom:1px solid #eee;height:150px;line-height:60px;background:#f5f7f9;text-align:center;margin-bottom:-90px}.bookingjs-bookpage-header span{font-size:14px;color:#999;font-weight:300;text-transform:uppercase;letter-spacing:.5px}.bookingjs-bookpage-content{padding:0;height:100%;overflow-y:auto}.bookingjs-bookpage-content-booking-info{position:relative;background:#fff;padding:5px;border-radius:3px;box-shadow:0 2px 10px #eee;margin-bottom:25px}.bookingjs-bookpage-content-booking-info-header{background:#f9f9f9;text-align:left;height:40px;line-height:40px;padding:0 20px;border-radius:3px}.bookingjs-bookpage-content-booking-info-header span{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#999}.bookingjs-bookpage-content-booking-info-body{padding:30px 15px}.bookingjs-bookpage-content-booking-info-body-price{font-size:45px}.is-small .bookingjs-bookpage-content-booking-info-body-price{font-size:30px}.bookingjs-bookpage-content-booking-info .right-align{text-align:right}.bookingjs-bookpage-footer{position:absolute;bottom:0;left:0;width:100%;border-top:1px solid #eee;line-height:67px;background:#f5f7f9}.bookingjs-bookpage-footer #paypal-button{width:230px;height:36px;overflow:hidden;margin:12px auto}.bookingjs-bookpage-date,.bookingjs-bookpage h2{text-align:left;font-size:24px;font-weight:300;margin:0;padding-bottom:8px;letter-spacing:.5px}.is-small .bookingjs-bookpage-date,.is-small .bookingjs-bookpage h2{font-size:14px}.bookingjs-bookpage-time,.bookingjs-bookpage h3{text-align:left;font-size:17px;font-weight:200;margin:0;letter-spacing:.5px}.is-small .bookingjs-bookpage-time,.is-small .bookingjs-bookpage h3{font-size:13px}.bookingjs-closeicon{height:15px;width:15px}.bookingjs-input-group{padding:10px}.bookingjs-input-group-label{display:block;padding:10px;font-size:11px;font-weight:300;text-transform:uppercase;letter-spacing:1px}.bookingjs-input-group-label .bookingjs-error{color:#d83b46;text-transform:none;margin-left:10px;font-weight:400}.bookingjs-form{margin:0 auto;text-align:left;height:100%;position:relative;overflow:hidden}.is-small .bookingjs-form{width:100%}.bookingjs-form-box{position:relative;overflow:hidden;background-color:#fff;line-height:0}.bookingjs-form-success-message{display:none;padding:30px;-webkit-transition:opacity .3s ease;transition:opacity .3s ease;line-height:normal}.is-small .bookingjs-form-success-message{padding:22px 10px}.bookingjs-form-success-message .title{font-size:20px;display:block;margin-bottom:25px}.bookingjs-form-success-message .body{display:block}.bookingjs-form-success-message .body p{padding-bottom:15px;font-size:16px;font-weight:300}.bookingjs-form-success-message .body .booked-email{color:#008ed6}.bookingjs-form-input,.bookingjs-form input,.bookingjs-form input:invalid textarea,.bookingjs-form textarea:invalid{width:100%;padding:10px 15px;margin:0 0 10px;border:1px solid #ececec;border-radius:3px;font-size:13px;font-weight:300;text-align:left;box-sizing:border-box;line-height:normal;font-family:Roboto,Helvetica,Tahoma,Arial,sans-serif;color:#666;overflow:auto}.bookingjs-form-input:focus,.bookingjs-form input:focus,.bookingjs-form input:invalid textarea:focus,.bookingjs-form textarea:invalid:focus{outline:0;border:1px solid #008ed6}.bookingjs-form-input.hidden,.bookingjs-form input.hidden,.bookingjs-form input:invalid textarea.hidden,.bookingjs-form textarea:invalid.hidden{display:none}.bookingjs-form-input:-moz-read-only,.bookingjs-form input:-moz-read-only,.bookingjs-form input:invalid textarea:-moz-read-only,.bookingjs-form textarea:invalid:-moz-read-only{cursor:not-allowed;font-style:italic}.bookingjs-form-input:read-only,.bookingjs-form input:invalid textarea:read-only,.bookingjs-form input:read-only,.bookingjs-form textarea:invalid:read-only{cursor:not-allowed;font-style:italic}.bookingjs-form-input:-moz-read-only:focus,.bookingjs-form input:-moz-read-only:focus,.bookingjs-form input:invalid textarea:-moz-read-only:focus,.bookingjs-form textarea:invalid:-moz-read-only:focus{box-shadow:inset 0 0 1px 1px #d8d8d8}.bookingjs-form-input:read-only:focus,.bookingjs-form input:invalid textarea:read-only:focus,.bookingjs-form input:read-only:focus,.bookingjs-form textarea:invalid:read-only:focus{box-shadow:inset 0 0 1px 1px #d8d8d8}.bookingjs-form-input.bookingjs-error,.bookingjs-form input.bookingjs-error,.bookingjs-form input:invalid textarea.bookingjs-error,.bookingjs-form textarea:invalid.bookingjs-error{border:1px solid #d83b46}.bookingjs-form-button{position:relative;-webkit-transition:background-color .2s,max-width .3s;transition:background-color .2s,max-width .3s;display:inline-block;padding:13px 25px;background-color:#008ed6;text-transform:uppercase;box-shadow:0 1px 3px 0 rgba(0,0,0,.15);color:#fff;border:0;border-radius:3px;font-size:1.1em;font-weight:600;margin-top:30px;cursor:pointer;height:44px;outline:0;text-align:center;max-width:200px}.bookingjs-form-button .error-text,.bookingjs-form-button .loading-text,.bookingjs-form-button .success-text{-webkit-transition:opacity .3s ease;transition:opacity .3s ease;position:absolute;top:13px;left:50%;-webkit-transform:translateX(-50%);transform:translateX(-50%);opacity:0}.bookingjs-form-button .inactive-text{white-space:nowrap;opacity:1}.bookingjs-form-button .loading-text svg{height:19px;width:19px;-webkit-animation:spin .6s infinite linear;animation:spin .6s infinite linear}.bookingjs-form-button .error-text svg{height:15px;width:15px;margin-top:2px}.bookingjs-form-button .success-text svg{height:15px;margin-top:2px;-webkit-transform:scale(0);transform:scale(0);-webkit-transition:-webkit-transform .6s ease;transition:-webkit-transform .6s ease;transition:transform .6s ease;transition:transform .6s ease,-webkit-transform .6s ease}.bookingjs-form-button:focus,.bookingjs-form-button:hover{background-color:#006ca3}.bookingjs-form-button.button-shake{-webkit-animation:shake .5s 1 ease;animation:shake .5s 1 ease}.bookingjs-form.loading .bookingjs-form-button,.bookingjs-form.loading .bookingjs-form-button:hover{max-width:80px;background-color:#b1b1b1;cursor:not-allowed}.bookingjs-form.loading .bookingjs-form-button .inactive-text,.bookingjs-form.loading .bookingjs-form-button:hover .inactive-text{opacity:0}.bookingjs-form.loading .bookingjs-form-button .loading-text,.bookingjs-form.loading .bookingjs-form-button:hover .loading-text{opacity:1}.bookingjs-form.error .bookingjs-form-button,.bookingjs-form.error .bookingjs-form-button:hover{max-width:80px;background-color:#d83b46;cursor:not-allowed}.bookingjs-form.error .bookingjs-form-button .inactive-text,.bookingjs-form.error .bookingjs-form-button:hover .inactive-text{opacity:0}.bookingjs-form.error .bookingjs-form-button .error-text,.bookingjs-form.error .bookingjs-form-button:hover .error-text{opacity:1}.bookingjs-form.success .bookingjs-form-button,.bookingjs-form.success .bookingjs-form-button:hover{max-width:80px;background-color:#5baf56;cursor:not-allowed}.bookingjs-form.success .bookingjs-form-button .inactive-text,.bookingjs-form.success .bookingjs-form-button:hover .inactive-text{opacity:0}.bookingjs-form.success .bookingjs-form-button .success-text,.bookingjs-form.success .bookingjs-form-button:hover .success-text{opacity:1}.bookingjs-form.success .bookingjs-form-button .success-text svg,.bookingjs-form.success .bookingjs-form-button:hover .success-text svg{-webkit-transform:scale(1);transform:scale(1)}.bookingjs-col{width:50%;float:left}.bookingjs .clear{clear:both}", ""]);
 	
 	// exports
 
@@ -24212,51 +24251,20 @@ return /******/ (function(modules) { // webpackBootstrap
 /***/ function(module, exports, __webpack_require__) {
 
 	var H = __webpack_require__(48);
-	module.exports = function() { var T = new H.Template({code: function (c,p,i) { var t=this;t.b(i=i||"");t.b("\n" + i);t.b("<input");t.b("\n" + i);t.b("  class=\"bookingjs-form-input input-name\"");t.b("\n" + i);t.b("  type=\"text\"");t.b("\n" + i);t.b("  name=\"name\"");t.b("\n" + i);t.b("  placeholder=\"");t.b(t.v(t.d("fields.name.placeholder",c,p,0)));t.b("\"");t.b("\n" + i);t.b("  ");if(t.s(t.d("fields.name.prefilled",c,p,1),c,p,0,154,191,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" value=\"");t.b(t.v(t.d("fields.name.prefilled",c,p,0)));t.b("\" ");});c.pop();}t.b("\n" + i);t.b("  ");if(t.s(t.d("fields.name.locked",c,p,1),c,p,0,247,257,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" readonly ");});c.pop();}t.b("\n" + i);t.b("  required");t.b("\n" + i);t.b("/>");t.b("\n");t.b("\n" + i);t.b("<input");t.b("\n" + i);t.b("  class=\"bookingjs-form-input input-email\"");t.b("\n" + i);t.b("  type=\"email\"");t.b("\n" + i);t.b("  name=\"email\"");t.b("\n" + i);t.b("  placeholder=\"");t.b(t.v(t.d("fields.email.placeholder",c,p,0)));t.b("\"");t.b("\n" + i);t.b("  ");if(t.s(t.d("fields.email.prefilled",c,p,1),c,p,0,456,494,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" value=\"");t.b(t.v(t.d("fields.email.prefilled",c,p,0)));t.b("\" ");});c.pop();}t.b("\n" + i);t.b("  ");if(t.s(t.d("fields.email.locked",c,p,1),c,p,0,552,562,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" readonly ");});c.pop();}t.b("\n" + i);t.b("  required");t.b("\n" + i);t.b("/>");t.b("\n");t.b("\n" + i);if(t.s(t.d("fields.phone.enabled",c,p,1),c,p,0,631,1011,"{{ }}")){t.rs(c,p,function(c,p,t){t.b("  <input");t.b("\n" + i);t.b("    class=\"bookingjs-form-input input-phone\"");t.b("\n" + i);t.b("    type=\"tel\"");t.b("\n" + i);t.b("    name=\"phone\"");t.b("\n" + i);t.b("    placeholder=\"");t.b(t.v(t.d("fields.phone.placeholder",c,p,0)));t.b("\"");t.b("\n" + i);t.b("    ");if(t.s(t.d("fields.phone.prefilled",c,p,1),c,p,0,800,838,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" value=\"");t.b(t.v(t.d("fields.phone.prefilled",c,p,0)));t.b("\" ");});c.pop();}t.b("\n" + i);t.b("    ");if(t.s(t.d("fields.phone.required",c,p,1),c,p,0,900,910,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" required ");});c.pop();}t.b("\n" + i);t.b("    ");if(t.s(t.d("fields.phone.locked",c,p,1),c,p,0,969,979,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" readonly ");});c.pop();}t.b("\n" + i);t.b("  />");t.b("\n" + i);});c.pop();}t.b("\n" + i);if(t.s(t.d("fields.voip.enabled",c,p,1),c,p,0,1066,1437,"{{ }}")){t.rs(c,p,function(c,p,t){t.b("  <input");t.b("\n" + i);t.b("    class=\"bookingjs-form-input input-voip\"");t.b("\n" + i);t.b("    type=\"text\"");t.b("\n" + i);t.b("    name=\"voip\"");t.b("\n" + i);t.b("    placeholder=\"");t.b(t.v(t.d("fields.voip.placeholder",c,p,0)));t.b("\"");t.b("\n" + i);t.b("    ");if(t.s(t.d("fields.voip.prefilled",c,p,1),c,p,0,1232,1269,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" value=\"");t.b(t.v(t.d("fields.voip.prefilled",c,p,0)));t.b("\" ");});c.pop();}t.b("\n" + i);t.b("    ");if(t.s(t.d("fields.voip.required",c,p,1),c,p,0,1329,1339,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" required ");});c.pop();}t.b("\n" + i);t.b("    ");if(t.s(t.d("fields.voip.locked",c,p,1),c,p,0,1396,1406,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" readonly ");});c.pop();}t.b("\n" + i);t.b("  />");t.b("\n" + i);});c.pop();}t.b("\n" + i);if(t.s(t.d("fields.location.enabled",c,p,1),c,p,0,1495,1906,"{{ }}")){t.rs(c,p,function(c,p,t){t.b("  <input");t.b("\n" + i);t.b("    class=\"bookingjs-form-input input-location\"");t.b("\n" + i);t.b("    type=\"text\"");t.b("\n" + i);t.b("    name=\"location\"");t.b("\n" + i);t.b("    placeholder=\"");t.b(t.v(t.d("fields.location.placeholder",c,p,0)));t.b("\"");t.b("\n" + i);t.b("    ");if(t.s(t.d("fields.location.prefilled",c,p,1),c,p,0,1677,1718,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" value=\"");t.b(t.v(t.d("fields.location.prefilled",c,p,0)));t.b("\" ");});c.pop();}t.b("\n" + i);t.b("    ");if(t.s(t.d("fields.location.required",c,p,1),c,p,0,1786,1796,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" required ");});c.pop();}t.b("\n" + i);t.b("    ");if(t.s(t.d("fields.location.locked",c,p,1),c,p,0,1861,1871,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" readonly ");});c.pop();}t.b("\n" + i);t.b("  />");t.b("\n" + i);});c.pop();}t.b("\n" + i);if(t.s(t.d("fields.comment.enabled",c,p,1),c,p,0,1967,2360,"{{ }}")){t.rs(c,p,function(c,p,t){t.b("  <textarea");t.b("\n" + i);t.b("    class=\"bookingjs-form-input input-comment\"");t.b("\n" + i);t.b("    rows=\"3\"");t.b("\n" + i);t.b("    name=\"comment\"");t.b("\n" + i);t.b("    placeholder=\"");t.b(t.v(t.d("fields.comment.placeholder",c,p,0)));t.b("\"");t.b("\n" + i);t.b("    ");if(t.s(t.d("fields.comment.required",c,p,1),c,p,0,2144,2154,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" required ");});c.pop();}t.b("\n" + i);t.b("    ");if(t.s(t.d("fields.comment.locked",c,p,1),c,p,0,2217,2227,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" readonly ");});c.pop();}t.b(">");if(t.s(t.d("fields.comment.prefilled",c,p,1),c,p,0,2287,2317,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(t.v(t.d("fields.comment.prefilled",c,p,0)));});c.pop();}t.b("</textarea>");t.b("\n" + i);});c.pop();}return t.fl(); },partials: {}, subs: {  }}, "\n<input\n  class=\"bookingjs-form-input input-name\"\n  type=\"text\"\n  name=\"name\"\n  placeholder=\"{{ fields.name.placeholder }}\"\n  {{# fields.name.prefilled }} value=\"{{ fields.name.prefilled }}\" {{/ fields.name.prefilled }}\n  {{# fields.name.locked }} readonly {{/ fields.name.locked }}\n  required\n/>\n\n<input\n  class=\"bookingjs-form-input input-email\"\n  type=\"email\"\n  name=\"email\"\n  placeholder=\"{{ fields.email.placeholder }}\"\n  {{# fields.email.prefilled }} value=\"{{ fields.email.prefilled }}\" {{/ fields.email.prefilled }}\n  {{# fields.email.locked }} readonly {{/ fields.email.locked }}\n  required\n/>\n\n{{# fields.phone.enabled }}\n  <input\n    class=\"bookingjs-form-input input-phone\"\n    type=\"tel\"\n    name=\"phone\"\n    placeholder=\"{{ fields.phone.placeholder }}\"\n    {{# fields.phone.prefilled }} value=\"{{ fields.phone.prefilled }}\" {{/ fields.phone.prefilled }}\n    {{# fields.phone.required }} required {{/ fields.phone.required }}\n    {{# fields.phone.locked }} readonly {{/ fields.phone.locked }}\n  />\n{{/ fields.phone.enabled }}\n\n{{# fields.voip.enabled }}\n  <input\n    class=\"bookingjs-form-input input-voip\"\n    type=\"text\"\n    name=\"voip\"\n    placeholder=\"{{ fields.voip.placeholder }}\"\n    {{# fields.voip.prefilled }} value=\"{{ fields.voip.prefilled }}\" {{/ fields.voip.prefilled }}\n    {{# fields.voip.required }} required {{/ fields.voip.required }}\n    {{# fields.voip.locked }} readonly {{/ fields.voip.locked }}\n  />\n{{/ fields.voip.enabled }}\n\n{{# fields.location.enabled }}\n  <input\n    class=\"bookingjs-form-input input-location\"\n    type=\"text\"\n    name=\"location\"\n    placeholder=\"{{ fields.location.placeholder }}\"\n    {{# fields.location.prefilled }} value=\"{{ fields.location.prefilled }}\" {{/ fields.location.prefilled }}\n    {{# fields.location.required }} required {{/ fields.location.required }}\n    {{# fields.location.locked }} readonly {{/ fields.location.locked }}\n  />\n{{/ fields.location.enabled }}\n\n{{# fields.comment.enabled }}\n  <textarea\n    class=\"bookingjs-form-input input-comment\"\n    rows=\"3\"\n    name=\"comment\"\n    placeholder=\"{{ fields.comment.placeholder }}\"\n    {{# fields.comment.required }} required {{/ fields.comment.required }}\n    {{# fields.comment.locked }} readonly {{/ fields.comment.locked }}>{{# fields.comment.prefilled }}{{ fields.comment.prefilled }}{{/ fields.comment.prefilled }}</textarea>\n{{/ fields.comment.enabled }}\n", H);return T; }();
+	module.exports = function() { var T = new H.Template({code: function (c,p,i) { var t=this;t.b(i=i||"");t.b("<div class=\"bookingjs-row\">");t.b("\n" + i);t.b("  <div class=\"bookingjs-col\">");t.b("\n" + i);t.b("    <div class=\"bookingjs-input-group\">");t.b("\n" + i);t.b("      <label for=\"bookingjs-first_name\" class=\"bookingjs-input-group-label\">First Name <span id=\"first_name-error\" class=\"bookingjs-error\"></span></label>");t.b("\n" + i);t.b("      <input");t.b("\n" + i);t.b("        class=\"bookingjs-form-input input-name\"");t.b("\n" + i);t.b("        type=\"text\"");t.b("\n" + i);t.b("        name=\"first_name\"");t.b("\n" + i);t.b("        id=\"bookingjs-first_name\"");t.b("\n" + i);t.b("        placeholder=\"");t.b(t.v(t.d("fields.first_name.placeholder",c,p,0)));t.b("\"");t.b("\n" + i);t.b("        ");if(t.s(t.d("fields.first_name.prefilled",c,p,1),c,p,0,494,537,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" value=\"");t.b(t.v(t.d("fields.first_name.prefilled",c,p,0)));t.b("\" ");});c.pop();}t.b("\n" + i);t.b("      ");if(t.s(t.d("fields.first_name.locked",c,p,1),c,p,0,609,619,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" readonly ");});c.pop();}t.b("\n" + i);t.b("      required");t.b("\n" + i);t.b("      />");t.b("\n" + i);t.b("    </div>");t.b("\n" + i);t.b("  </div>");t.b("\n" + i);t.b("  <div class=\"bookingjs-col\">");t.b("\n" + i);t.b("    <div class=\"bookingjs-input-group\">");t.b("\n" + i);t.b("      <label for=\"bookingjs-last_name\" class=\"bookingjs-input-group-label\">Last Name <span id=\"last_name-error\" class=\"bookingjs-error\"></span></label>");t.b("\n" + i);t.b("      <input");t.b("\n" + i);t.b("        class=\"bookingjs-form-input input-name\"");t.b("\n" + i);t.b("        type=\"text\"");t.b("\n" + i);t.b("        name=\"last_name\"");t.b("\n" + i);t.b("        id=\"bookingjs-last_name\"");t.b("\n" + i);t.b("        placeholder=\"");t.b(t.v(t.d("fields.last_name.placeholder",c,p,0)));t.b("\"");t.b("\n" + i);t.b("        ");if(t.s(t.d("fields.last_name.prefilled",c,p,1),c,p,0,1154,1196,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" value=\"");t.b(t.v(t.d("fields.last_name.prefilled",c,p,0)));t.b("\" ");});c.pop();}t.b("\n" + i);t.b("      ");if(t.s(t.d("fields.last_name.locked",c,p,1),c,p,0,1266,1276,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" readonly ");});c.pop();}t.b("\n" + i);t.b("      required");t.b("\n" + i);t.b("      />");t.b("\n" + i);t.b("    </div>");t.b("\n" + i);t.b("  </div>");t.b("\n" + i);t.b("</div>");t.b("\n" + i);t.b("<div class=\"bookingjs-input-group\">");t.b("\n" + i);t.b("  <label for=\"bookingjs-email\" class=\"bookingjs-input-group-label\">Email <span id=\"email-error\" class=\"bookingjs-error\"></span></label>");t.b("\n" + i);t.b("  <input");t.b("\n" + i);t.b("    class=\"bookingjs-form-input input-email\"");t.b("\n" + i);t.b("    type=\"email\"");t.b("\n" + i);t.b("    name=\"email\"");t.b("\n" + i);t.b("    id=\"bookingjs-email\"");t.b("\n" + i);t.b("    placeholder=\"");t.b(t.v(t.d("fields.email.placeholder",c,p,0)));t.b("\"");t.b("\n" + i);t.b("    ");if(t.s(t.d("fields.email.prefilled",c,p,1),c,p,0,1725,1763,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" value=\"");t.b(t.v(t.d("fields.email.prefilled",c,p,0)));t.b("\" ");});c.pop();}t.b("\n" + i);t.b("    ");if(t.s(t.d("fields.email.locked",c,p,1),c,p,0,1823,1833,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" readonly ");});c.pop();}t.b("\n" + i);t.b("    required");t.b("\n" + i);t.b("  />");t.b("\n" + i);t.b("</div>");t.b("\n" + i);if(t.s(t.d("fields.phone.enabled",c,p,1),c,p,0,1912,2292,"{{ }}")){t.rs(c,p,function(c,p,t){t.b("  <input");t.b("\n" + i);t.b("    class=\"bookingjs-form-input input-phone\"");t.b("\n" + i);t.b("    type=\"tel\"");t.b("\n" + i);t.b("    name=\"phone\"");t.b("\n" + i);t.b("    placeholder=\"");t.b(t.v(t.d("fields.phone.placeholder",c,p,0)));t.b("\"");t.b("\n" + i);t.b("    ");if(t.s(t.d("fields.phone.prefilled",c,p,1),c,p,0,2081,2119,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" value=\"");t.b(t.v(t.d("fields.phone.prefilled",c,p,0)));t.b("\" ");});c.pop();}t.b("\n" + i);t.b("    ");if(t.s(t.d("fields.phone.required",c,p,1),c,p,0,2181,2191,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" required ");});c.pop();}t.b("\n" + i);t.b("    ");if(t.s(t.d("fields.phone.locked",c,p,1),c,p,0,2250,2260,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" readonly ");});c.pop();}t.b("\n" + i);t.b("  />");t.b("\n" + i);});c.pop();}t.b("\n" + i);if(t.s(t.d("fields.voip.enabled",c,p,1),c,p,0,2347,2718,"{{ }}")){t.rs(c,p,function(c,p,t){t.b("  <input");t.b("\n" + i);t.b("    class=\"bookingjs-form-input input-voip\"");t.b("\n" + i);t.b("    type=\"text\"");t.b("\n" + i);t.b("    name=\"voip\"");t.b("\n" + i);t.b("    placeholder=\"");t.b(t.v(t.d("fields.voip.placeholder",c,p,0)));t.b("\"");t.b("\n" + i);t.b("    ");if(t.s(t.d("fields.voip.prefilled",c,p,1),c,p,0,2513,2550,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" value=\"");t.b(t.v(t.d("fields.voip.prefilled",c,p,0)));t.b("\" ");});c.pop();}t.b("\n" + i);t.b("    ");if(t.s(t.d("fields.voip.required",c,p,1),c,p,0,2610,2620,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" required ");});c.pop();}t.b("\n" + i);t.b("    ");if(t.s(t.d("fields.voip.locked",c,p,1),c,p,0,2677,2687,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" readonly ");});c.pop();}t.b("\n" + i);t.b("  />");t.b("\n" + i);});c.pop();}t.b("\n" + i);if(t.s(t.d("fields.location.enabled",c,p,1),c,p,0,2776,3187,"{{ }}")){t.rs(c,p,function(c,p,t){t.b("  <input");t.b("\n" + i);t.b("    class=\"bookingjs-form-input input-location\"");t.b("\n" + i);t.b("    type=\"text\"");t.b("\n" + i);t.b("    name=\"location\"");t.b("\n" + i);t.b("    placeholder=\"");t.b(t.v(t.d("fields.location.placeholder",c,p,0)));t.b("\"");t.b("\n" + i);t.b("    ");if(t.s(t.d("fields.location.prefilled",c,p,1),c,p,0,2958,2999,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" value=\"");t.b(t.v(t.d("fields.location.prefilled",c,p,0)));t.b("\" ");});c.pop();}t.b("\n" + i);t.b("    ");if(t.s(t.d("fields.location.required",c,p,1),c,p,0,3067,3077,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" required ");});c.pop();}t.b("\n" + i);t.b("    ");if(t.s(t.d("fields.location.locked",c,p,1),c,p,0,3142,3152,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" readonly ");});c.pop();}t.b("\n" + i);t.b("  />");t.b("\n" + i);});c.pop();}t.b("\n" + i);if(t.s(t.d("fields.comment.enabled",c,p,1),c,p,0,3248,3655,"{{ }}")){t.rs(c,p,function(c,p,t){t.b("<textarea");t.b("\n" + i);t.b("        class=\"bookingjs-form-input input-comment\"");t.b("\n" + i);t.b("        rows=\"3\"");t.b("\n" + i);t.b("        name=\"comment\"");t.b("\n" + i);t.b("        placeholder=\"");t.b(t.v(t.d("fields.comment.placeholder",c,p,0)));t.b("\"");t.b("\n" + i);t.b("        ");if(t.s(t.d("fields.comment.required",c,p,1),c,p,0,3443,3453,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" required ");});c.pop();}t.b("\n" + i);if(t.s(t.d("fields.comment.locked",c,p,1),c,p,0,3512,3522,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(" readonly ");});c.pop();}t.b(">");if(t.s(t.d("fields.comment.prefilled",c,p,1),c,p,0,3582,3612,"{{ }}")){t.rs(c,p,function(c,p,t){t.b(t.v(t.d("fields.comment.prefilled",c,p,0)));});c.pop();}t.b("</textarea>");t.b("\n" + i);});c.pop();}return t.fl(); },partials: {}, subs: {  }}, "<div class=\"bookingjs-row\">\n  <div class=\"bookingjs-col\">\n    <div class=\"bookingjs-input-group\">\n      <label for=\"bookingjs-first_name\" class=\"bookingjs-input-group-label\">First Name <span id=\"first_name-error\" class=\"bookingjs-error\"></span></label>\n      <input\n        class=\"bookingjs-form-input input-name\"\n        type=\"text\"\n        name=\"first_name\"\n        id=\"bookingjs-first_name\"\n        placeholder=\"{{ fields.first_name.placeholder }}\"\n        {{# fields.first_name.prefilled }} value=\"{{ fields.first_name.prefilled }}\" {{/ fields.first_name.prefilled }}\n      {{# fields.first_name.locked }} readonly {{/ fields.first_name.locked }}\n      required\n      />\n    </div>\n  </div>\n  <div class=\"bookingjs-col\">\n    <div class=\"bookingjs-input-group\">\n      <label for=\"bookingjs-last_name\" class=\"bookingjs-input-group-label\">Last Name <span id=\"last_name-error\" class=\"bookingjs-error\"></span></label>\n      <input\n        class=\"bookingjs-form-input input-name\"\n        type=\"text\"\n        name=\"last_name\"\n        id=\"bookingjs-last_name\"\n        placeholder=\"{{ fields.last_name.placeholder }}\"\n        {{# fields.last_name.prefilled }} value=\"{{ fields.last_name.prefilled }}\" {{/ fields.last_name.prefilled }}\n      {{# fields.last_name.locked }} readonly {{/ fields.last_name.locked }}\n      required\n      />\n    </div>\n  </div>\n</div>\n<div class=\"bookingjs-input-group\">\n  <label for=\"bookingjs-email\" class=\"bookingjs-input-group-label\">Email <span id=\"email-error\" class=\"bookingjs-error\"></span></label>\n  <input\n    class=\"bookingjs-form-input input-email\"\n    type=\"email\"\n    name=\"email\"\n    id=\"bookingjs-email\"\n    placeholder=\"{{ fields.email.placeholder }}\"\n    {{# fields.email.prefilled }} value=\"{{ fields.email.prefilled }}\" {{/ fields.email.prefilled }}\n    {{# fields.email.locked }} readonly {{/ fields.email.locked }}\n    required\n  />\n</div>\n{{# fields.phone.enabled }}\n  <input\n    class=\"bookingjs-form-input input-phone\"\n    type=\"tel\"\n    name=\"phone\"\n    placeholder=\"{{ fields.phone.placeholder }}\"\n    {{# fields.phone.prefilled }} value=\"{{ fields.phone.prefilled }}\" {{/ fields.phone.prefilled }}\n    {{# fields.phone.required }} required {{/ fields.phone.required }}\n    {{# fields.phone.locked }} readonly {{/ fields.phone.locked }}\n  />\n{{/ fields.phone.enabled }}\n\n{{# fields.voip.enabled }}\n  <input\n    class=\"bookingjs-form-input input-voip\"\n    type=\"text\"\n    name=\"voip\"\n    placeholder=\"{{ fields.voip.placeholder }}\"\n    {{# fields.voip.prefilled }} value=\"{{ fields.voip.prefilled }}\" {{/ fields.voip.prefilled }}\n    {{# fields.voip.required }} required {{/ fields.voip.required }}\n    {{# fields.voip.locked }} readonly {{/ fields.voip.locked }}\n  />\n{{/ fields.voip.enabled }}\n\n{{# fields.location.enabled }}\n  <input\n    class=\"bookingjs-form-input input-location\"\n    type=\"text\"\n    name=\"location\"\n    placeholder=\"{{ fields.location.placeholder }}\"\n    {{# fields.location.prefilled }} value=\"{{ fields.location.prefilled }}\" {{/ fields.location.prefilled }}\n    {{# fields.location.required }} required {{/ fields.location.required }}\n    {{# fields.location.locked }} readonly {{/ fields.location.locked }}\n  />\n{{/ fields.location.enabled }}\n\n{{# fields.comment.enabled }}\n<textarea\n        class=\"bookingjs-form-input input-comment\"\n        rows=\"3\"\n        name=\"comment\"\n        placeholder=\"{{ fields.comment.placeholder }}\"\n        {{# fields.comment.required }} required {{/ fields.comment.required }}\n{{# fields.comment.locked }} readonly {{/ fields.comment.locked }}>{{# fields.comment.prefilled }}{{ fields.comment.prefilled }}{{/ fields.comment.prefilled }}</textarea>\n{{/ fields.comment.enabled }}", H);return T; }();
 
 /***/ },
 /* 54 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var H = __webpack_require__(48);
-	module.exports = function() { var T = new H.Template({code: function (c,p,i) { var t=this;t.b(i=i||"");t.b("<div class=\"bookingjs-bookpage\">");t.b("\n" + i);t.b("  <a class=\"bookingjs-bookpage-close\" href=\"#\">");t.b(t.t(t.f("closeIcon",c,p,0)));t.b("</a>");t.b("\n" + i);t.b("  <h2 class=\"bookingjs-bookpage-date\">");t.b(t.v(t.f("chosenDate",c,p,0)));t.b("</h2>");t.b("\n" + i);t.b("  <h3 class=\"bookingjs-bookpage-time\">");t.b(t.v(t.f("chosenTime",c,p,0)));t.b("</h3>");t.b("\n" + i);t.b("  <form id=\"ck-form\" class=\"bookingjs-form\" action=\"#\">");t.b("\n" + i);t.b("    <div class=\"bookingjs-form-box\">");t.b("\n" + i);t.b("      <div class=\"bookingjs-form-success-message\">");t.b("\n" + i);t.b("        <div class=\"title\">");t.b(t.v(t.f("successMessageTitle",c,p,0)));t.b("</div>");t.b("\n" + i);t.b("        <div class=\"body\">");t.b(t.t(t.f("successMessageBody",c,p,0)));t.b("</div>");t.b("\n" + i);t.b("      </div>");t.b("\n" + i);t.b("      <div class=\"bookingjs-form-fields\">");t.b("\n" + i);t.b("        <input class=\"bookingjs-form-input hidden\" type=\"text\" name=\"start\" value=\"");t.b(t.v(t.f("start",c,p,0)));t.b("\" />");t.b("\n" + i);t.b("        <input class=\"bookingjs-form-input hidden\" type=\"text\" name=\"end\" value=\"");t.b(t.v(t.f("end",c,p,0)));t.b("\" />");t.b("\n" + i);t.b(t.rp("<formFields0",c,p,"        "));t.b("      </div>");t.b("\n" + i);t.b("    </div>");t.b("\n" + i);t.b("    <div id=\"paypal-button\"></div>");t.b("\n" + i);t.b("    <button id=\"book-button\" class=\"bookingjs-form-button\" type=\"submit\">");t.b("\n" + i);t.b("      <span class=\"inactive-text\">");t.b(t.v(t.f("submitText",c,p,0)));t.b("</span>");t.b("\n" + i);t.b("      <span class=\"loading-text\">");t.b(t.t(t.f("loadingIcon",c,p,0)));t.b("</span>");t.b("\n" + i);t.b("      <span class=\"error-text\">");t.b(t.t(t.f("errorIcon",c,p,0)));t.b("</span>");t.b("\n" + i);t.b("      <span class=\"success-text\">");t.b(t.t(t.f("checkmarkIcon",c,p,0)));t.b("</span>");t.b("\n" + i);t.b("    </button>");t.b("\n" + i);t.b("  </form>");t.b("\n" + i);t.b("</div>");t.b("\n");return t.fl(); },partials: {"<formFields0":{name:"formFields", partials: {}, subs: {  }}}, subs: {  }}, "<div class=\"bookingjs-bookpage\">\n  <a class=\"bookingjs-bookpage-close\" href=\"#\">{{& closeIcon }}</a>\n  <h2 class=\"bookingjs-bookpage-date\">{{ chosenDate }}</h2>\n  <h3 class=\"bookingjs-bookpage-time\">{{ chosenTime }}</h3>\n  <form id=\"ck-form\" class=\"bookingjs-form\" action=\"#\">\n    <div class=\"bookingjs-form-box\">\n      <div class=\"bookingjs-form-success-message\">\n        <div class=\"title\">{{ successMessageTitle }}</div>\n        <div class=\"body\">{{& successMessageBody }}</div>\n      </div>\n      <div class=\"bookingjs-form-fields\">\n        <input class=\"bookingjs-form-input hidden\" type=\"text\" name=\"start\" value=\"{{ start }}\" />\n        <input class=\"bookingjs-form-input hidden\" type=\"text\" name=\"end\" value=\"{{ end }}\" />\n        {{> formFields }}\n      </div>\n    </div>\n    <div id=\"paypal-button\"></div>\n    <button id=\"book-button\" class=\"bookingjs-form-button\" type=\"submit\">\n      <span class=\"inactive-text\">{{ submitText }}</span>\n      <span class=\"loading-text\">{{& loadingIcon }}</span>\n      <span class=\"error-text\">{{& errorIcon }}</span>\n      <span class=\"success-text\">{{& checkmarkIcon }}</span>\n    </button>\n  </form>\n</div>\n", H);return T; }();
+	module.exports = function() { var T = new H.Template({code: function (c,p,i) { var t=this;t.b(i=i||"");t.b("<div class=\"bookingjs-bookpage\">");t.b("\n" + i);t.b("  <a class=\"bookingjs-bookpage-close\" href=\"#\">");t.b(t.t(t.f("closeIcon",c,p,0)));t.b("</a>");t.b("\n" + i);t.b("  <form id=\"ck-form\" class=\"bookingjs-form\" action=\"#\">");t.b("\n" + i);t.b("    <div class=\"bookingjs-bookpage-content\">");t.b("\n" + i);t.b("      <div class=\"bookingjs-bookpage-header\">");t.b("\n" + i);t.b("        <span id=\"booking-page-title\">Complete your booking</span>");t.b("\n" + i);t.b("      </div>");t.b("\n" + i);t.b("      <div class=\"bookingjs-bookpage-container\">");t.b("\n" + i);t.b("        <div class=\"bookingjs-bookpage-content-booking-info\">");t.b("\n" + i);t.b("          <div class=\"bookingjs-bookpage-content-booking-info-header\">");t.b("\n" + i);t.b("            <span class=\"bookingjs-col\">Time</span>");t.b("\n" + i);t.b("            <span class=\"bookingjs-col right-align\">Cost</span>");t.b("\n" + i);t.b("          </div>");t.b("\n" + i);t.b("          <div class=\"bookingjs-bookpage-content-booking-info-body\">");t.b("\n" + i);t.b("            <div class=\"bookingjs-col\">");t.b("\n" + i);t.b("              <h2 class=\"bookingjs-bookpage-date\">");t.b(t.v(t.f("chosenDate",c,p,0)));t.b("</h2>");t.b("\n" + i);t.b("              <h3 class=\"bookingjs-bookpage-time\">");t.b(t.v(t.f("chosenTime",c,p,0)));t.b("</h3>");t.b("\n" + i);t.b("            </div>");t.b("\n" + i);t.b("            <div class=\"bookingjs-col right-align\">");t.b("\n" + i);t.b("              <span class=\"bookingjs-bookpage-content-booking-info-body-price\">$");t.b(t.v(t.f("meetingCost",c,p,0)));t.b("</span>");t.b("\n" + i);t.b("            </div>");t.b("\n" + i);t.b("            <div class=\"clear\"></div>");t.b("\n" + i);t.b("          </div>");t.b("\n" + i);t.b("        </div>");t.b("\n" + i);t.b("        <div class=\"bookingjs-form-box\">");t.b("\n" + i);t.b("          <div class=\"bookingjs-form-success-message\">");t.b("\n" + i);t.b("            <div class=\"title\">");t.b(t.v(t.f("successMessageTitle",c,p,0)));t.b("</div>");t.b("\n" + i);t.b("            <div class=\"body\">");t.b(t.t(t.f("successMessageBody",c,p,0)));t.b("</div>");t.b("\n" + i);t.b("          </div>");t.b("\n" + i);t.b("          <div class=\"bookingjs-form-fields\">");t.b("\n" + i);t.b(t.rp("<formFields0",c,p,"            "));t.b("          </div>");t.b("\n" + i);t.b("        </div>");t.b("\n" + i);t.b("      </div>");t.b("\n" + i);t.b("    </div>");t.b("\n" + i);t.b("    <div class=\"bookingjs-bookpage-footer\">");t.b("\n" + i);t.b("      <div id=\"paypal-button\"></div>");t.b("\n" + i);t.b("    </div>");t.b("\n" + i);t.b("  </form>");t.b("\n" + i);t.b("</div>");return t.fl(); },partials: {"<formFields0":{name:"formFields", partials: {}, subs: {  }}}, subs: {  }}, "<div class=\"bookingjs-bookpage\">\n  <a class=\"bookingjs-bookpage-close\" href=\"#\">{{& closeIcon }}</a>\n  <form id=\"ck-form\" class=\"bookingjs-form\" action=\"#\">\n    <div class=\"bookingjs-bookpage-content\">\n      <div class=\"bookingjs-bookpage-header\">\n        <span id=\"booking-page-title\">Complete your booking</span>\n      </div>\n      <div class=\"bookingjs-bookpage-container\">\n        <div class=\"bookingjs-bookpage-content-booking-info\">\n          <div class=\"bookingjs-bookpage-content-booking-info-header\">\n            <span class=\"bookingjs-col\">Time</span>\n            <span class=\"bookingjs-col right-align\">Cost</span>\n          </div>\n          <div class=\"bookingjs-bookpage-content-booking-info-body\">\n            <div class=\"bookingjs-col\">\n              <h2 class=\"bookingjs-bookpage-date\">{{ chosenDate }}</h2>\n              <h3 class=\"bookingjs-bookpage-time\">{{ chosenTime }}</h3>\n            </div>\n            <div class=\"bookingjs-col right-align\">\n              <span class=\"bookingjs-bookpage-content-booking-info-body-price\">${{ meetingCost }}</span>\n            </div>\n            <div class=\"clear\"></div>\n          </div>\n        </div>\n        <div class=\"bookingjs-form-box\">\n          <div class=\"bookingjs-form-success-message\">\n            <div class=\"title\">{{ successMessageTitle }}</div>\n            <div class=\"body\">{{& successMessageBody }}</div>\n          </div>\n          <div class=\"bookingjs-form-fields\">\n            {{> formFields }}\n          </div>\n        </div>\n      </div>\n    </div>\n    <div class=\"bookingjs-bookpage-footer\">\n      <div id=\"paypal-button\"></div>\n    </div>\n  </form>\n</div>", H);return T; }();
 
 /***/ },
 /* 55 */
 /***/ function(module, exports) {
 
 	module.exports = "<svg class=\"bookingjs-closeicon\" viewBox=\"0 0 90 90\" version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xmlns:sketch=\"http://www.bohemiancoding.com/sketch/ns\"><title>close-icon</title><desc>Created with Sketch.</desc><defs></defs><g id=\"Page-1\" stroke=\"none\" stroke-width=\"1\" fill=\"none\" fill-rule=\"evenodd\" sketch:type=\"MSPage\"><g id=\"close-icon\" sketch:type=\"MSLayerGroup\" fill=\"#000000\"><path d=\"M58,45 L87.2,15.8 C90.9,12.1 90.9,6.3 87.3,2.7 C83.7,-0.9 77.8,-0.8 74.2,2.8 L45,32 L15.8,2.8 C12.1,-0.9 6.3,-0.9 2.7,2.7 C-0.9,6.3 -0.8,12.2 2.8,15.8 L32,45 L2.8,74.2 C-0.9,77.9 -0.9,83.7 2.7,87.3 C6.3,90.9 12.2,90.8 15.8,87.2 L45,58 L74.2,87.2 C77.9,90.9 83.7,90.9 87.3,87.3 C90.9,83.7 90.8,77.8 87.2,74.2 L58,45 L58,45 Z\" id=\"Shape\" sketch:type=\"MSShapeGroup\"></path></g></g></svg>"
-
-/***/ },
-/* 56 */
-/***/ function(module, exports) {
-
-	module.exports = "<svg viewBox=\"0 0 38 26\" x=\"0px\" y=\"0px\" version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xmlns:sketch=\"http://www.bohemiancoding.com/sketch/ns\"><path fill=\"#fff\" d=\"M4.59255916,9.14153015 L4.59255916,9.14153015 L4.59255917,9.14153016 C3.61060488,8.15335155 2.0152224,8.15314806 1.03260582,9.1419932 L0.737322592,9.43914816 C-0.245558943,10.4282599 -0.245836003,12.0327396 0.736862454,13.0216671 L12.8967481,25.2586313 C13.4826504,25.8482474 14.3060779,26.1023412 15.1093609,25.9623831 L15.1946218,25.9520176 C15.7962843,25.9101633 16.3621851,25.6553951 16.7974015,25.21742 L37.2642739,4.6208133 C38.2456495,3.63321696 38.2453889,2.02851586 37.2626092,1.03950653 L36.967326,0.742351578 C35.9843771,-0.246827998 34.390543,-0.247513927 33.4085772,0.740676315 L15.4197831,18.8434968 L14.826599,19.4404409 L14.2334149,18.8434968 L4.59255916,9.14153015 Z\" id=\"Path\"></path></svg>"
-
-/***/ },
-/* 57 */
-/***/ function(module, exports) {
-
-	module.exports = "<svg version=\"1.1\" id=\"loader-1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" x=\"0px\" y=\"0px\" viewBox=\"0 0 38 38\" xml:space=\"preserve\"><path fill=\"#fff\" d=\"M38,19 C38,8.50658975 29.4934102,0 19,0 C8.50658975,0 0,8.50658975 0,19 L5,19 C5,11.2680135 11.2680135,5 19,5 C26.7319865,5 33,11.2680135 33,19 L38,19 Z\" id=\"Oval-1\" sketch:type=\"MSShapeGroup\"></path></path></svg>"
-
-/***/ },
-/* 58 */
-/***/ function(module, exports) {
-
-	module.exports = "<svg class=\"bookingjs-closeicon\" viewBox=\"0 0 90 90\" version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xmlns:sketch=\"http://www.bohemiancoding.com/sketch/ns\"><title>error-icon</title><desc>Created with Sketch.</desc><defs></defs><g id=\"Page-1\" stroke=\"none\" stroke-width=\"1\" fill=\"none\" fill-rule=\"evenodd\" sketch:type=\"MSPage\"><g id=\"error-icon\" sketch:type=\"MSLayerGroup\" fill=\"#FFFFFF\"><path d=\"M58,45 L87.2,15.8 C90.9,12.1 90.9,6.3 87.3,2.7 C83.7,-0.9 77.8,-0.8 74.2,2.8 L45,32 L15.8,2.8 C12.1,-0.9 6.3,-0.9 2.7,2.7 C-0.9,6.3 -0.8,12.2 2.8,15.8 L32,45 L2.8,74.2 C-0.9,77.9 -0.9,83.7 2.7,87.3 C6.3,90.9 12.2,90.8 15.8,87.2 L45,58 L74.2,87.2 C77.9,90.9 83.7,90.9 87.3,87.3 C90.9,83.7 90.8,77.8 87.2,74.2 L58,45 L58,45 Z\" id=\"Shape\" sketch:type=\"MSShapeGroup\"></path></g></g></svg>"
-
-/***/ },
-/* 59 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var H = __webpack_require__(48);
-	module.exports = function() { var T = new H.Template({code: function (c,p,i) { var t=this;t.b(i=i||"");t.b("<div class=\"bookingjs-poweredby\">");t.b("\n" + i);t.b("  <a href=\"http://consultationkit.com\" target=\"_blank\">");t.b("\n" + i);t.b("    <span>Powered by Consultation Kit</span>");t.b("\n" + i);t.b("  </a>");t.b("\n" + i);t.b("</div>");t.b("\n");return t.fl(); },partials: {}, subs: {  }}, "<div class=\"bookingjs-poweredby\">\n  <a href=\"http://consultationkit.com\" target=\"_blank\">\n    <span>Powered by Consultation Kit</span>\n  </a>\n</div>\n", H);return T; }();
-
-/***/ },
-/* 60 */
-/***/ function(module, exports) {
-
-	module.exports = "<svg class=\"bookingjs-timekitlogo\" viewBox=\"0 0 513 548\" version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\"><title>timekit-logo</title><desc>Created with Sketch.</desc><defs></defs><g id=\"Page-1\" stroke=\"none\" stroke-width=\"1\" fill=\"none\" fill-rule=\"evenodd\"><g id=\"timekit-logo\" transform=\"translate(9.000000, 9.000000)\" fill=\"#AEAEAE\"><path d=\"M55.2163313,275.621588 L198.50357,163.134257 C227.693194,140.219007 274.527519,140.836287 303.106573,164.516436 L439.222777,277.300154 L294.687237,386.088734 C265.004826,408.430003 217.635083,407.547293 188.834846,384.15411 L55.2163313,275.621588 Z M29.1450782,296.088768 L22.5453033,301.269906 C-6.64628574,324.186699 -6.96035256,361.73094 21.8567615,385.137832 L188.814783,520.750588 C217.626101,544.152772 265.020127,545.031261 294.666324,522.71725 L471.933566,389.292269 C501.58244,366.976243 502.456142,329.694313 473.870647,306.008826 L465.168534,298.798395 L304.79022,419.511467 C268.948833,446.488455 213.042282,445.460488 178.242802,417.194379 L29.1450782,296.088768 Z\" id=\"Base-layer\"></path><path d=\"M303.106573,18.9036609 L473.870647,160.396052 C502.470886,184.093754 501.573077,221.370515 471.912654,243.695235 L294.687237,377.088734 C265.004826,399.430003 217.635083,398.547293 188.834846,375.15411 L21.8366979,239.50876 C-6.94564818,216.130109 -6.64628574,178.573924 22.5453033,155.657132 L198.50357,17.5214821 C227.708304,-5.40562963 274.527519,-4.77648801 303.106573,18.9036609 Z M292.387775,31.8399435 C269.89295,13.2010897 231.857075,12.6958644 208.877526,30.7359084 L32.9192595,168.871558 C12.2117199,185.127966 12.006219,209.880161 32.4287426,226.468491 L199.426891,362.113841 C222.242635,380.64608 261.076006,381.360119 284.584254,363.666001 L461.809671,230.272501 C482.810002,214.466035 483.387128,190.098964 463.151849,173.332334 L292.387775,31.8399435 Z\" id=\"Middle-layer\" stroke=\"#AEAEAE\" stroke-width=\"18\"></path></g></g></svg>"
 
 /***/ }
 /******/ ])

@@ -246,13 +246,12 @@ $fontFamily:        'Roboto', Helvetica, Tahoma, Arial, sans-serif;
       border-top: 1px solid #eee;
       line-height: 67px;
       background: $bgColor;
-      padding: 12px 0;
 
       #paypal-button {
         width: 230px;
         height: 36px;
         overflow: hidden;
-        margin: 0 auto;
+        margin: 12px auto;
       }
     }
 
@@ -306,6 +305,7 @@ $fontFamily:        'Roboto', Helvetica, Tahoma, Arial, sans-serif;
         color: $errorColor;
         text-transform: none;
         margin-left: 10px;
+        font-weight: 400;
       }
     }
 
@@ -329,13 +329,8 @@ $fontFamily:        'Roboto', Helvetica, Tahoma, Arial, sans-serif;
     }
 
     &-success-message {
-      position: absolute;
-      top: -999px;
-      left: 0;
-      right: 0;
+      display: none;
       padding: 30px;
-      background-color: white;
-      opacity: 0;
       transition: opacity 0.3s ease;
       line-height: normal;
 
@@ -352,16 +347,16 @@ $fontFamily:        'Roboto', Helvetica, Tahoma, Arial, sans-serif;
       .body {
         display: block;
 
+        p {
+          padding-bottom: 15px;
+          font-size: 16px;
+          font-weight: 300;
+        }
+
         .booked-email {
-          color: $textLightColor;
+          color: $primaryColor;
         }
       }
-    }
-
-    &.success &-success-message {
-      opacity: 1;
-      top: 0;
-      bottom: 0;
     }
 
     &-input,

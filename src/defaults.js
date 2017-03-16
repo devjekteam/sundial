@@ -92,8 +92,7 @@ var primary = {
     showTimezoneHelper: true,
     timeDateFormat: '12h-mdy-sun',
     strings: {
-      submitText: 'Book it',
-      successMessageTitle: 'Thanks!',
+      successMessageTitle: 'Your consultation has been booked!',
       timezoneHelperLoading: 'Loading..',
       timezoneHelperDifferent: 'Your timezone is %s hours %s of %s (calendar shown in your local time)',
       timezoneHelperSame: 'You are in the same timezone as %s'
@@ -117,7 +116,7 @@ var bookingInstant = {
   },
   localization: {
     strings: {
-      successMessageBody: 'An invitation has been sent to: <br /> %s <br /><br /> Please accept the invitation to confirm the booking.'
+      successMessageBody: '<p>An invitation has been sent to: %s </p><p>Please accept the invitation to confirm the booking.</p>'
     }
   }
 

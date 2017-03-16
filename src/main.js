@@ -53,12 +53,11 @@ function TimekitBooking() {
 
   // Setup the Timekit SDK with correct credentials
   var timekitSetupUser = function() {
-    console.log("we going innnnnn");
     consultationKitSkd.setUser(config.userId, config.apiToken);
 
   };
 
-  // Fetch availabile time through Timekit SDK
+  // Fetch availabile time through Consultation Kit SDK
   var timekitFindTime = function() {
 
     var args = {};
@@ -293,13 +292,10 @@ function TimekitBooking() {
       start:                moment(eventData.start).format(),
       end:                  moment(eventData.end).format(),
       closeIcon:            require('!svg-inline!./assets/close-icon.svg'),
-      checkmarkIcon:        require('!svg-inline!./assets/checkmark-icon.svg'),
-      loadingIcon:          require('!svg-inline!./assets/loading-spinner.svg'),
-      errorIcon:            require('!svg-inline!./assets/error-icon.svg'),
-      submitText:           config.localization.strings.submitText,
       successMessageTitle:  config.localization.strings.successMessageTitle,
       successMessageBody:   interpolate.sprintf(config.localization.strings.successMessageBody, '<span class="booked-email"></span>'),
-      fields:               config.bookingFields
+      fields:               config.bookingFields,
+      meetingCost:          config.meetingCost
     }, {
       formFields: fieldsTemplate
     }));
@@ -330,22 +326,25 @@ function TimekitBooking() {
         $('.bookingjs-form-input').removeClass('bookingjs-error');
         $('.bookingjs-error').text('');
         var client = {};
+        var hasErrors = false;
         $.each(formDataArr, function(i, prop) {
           client[prop.name] = prop.value;
           if (prop.value === '') {
             $('#'+prop.name + '-error').text('This field is required!');
             $('#bookingjs-' + prop.name).addClass('bookingjs-error');
-            reject(prop.name + ' is required!');
+            hasErrors = true;
           }
         });
 
+        if (hasErrors) return reject('All fields are required');
+
         consultationKitSkd.createPayment(config.calendar)
-          .done(function(data) {
-            resolve(data.payment_id);
-          })
-          .fail(function(err) {
-            reject(err.statusText);
-          })
+            .done(function(data) {
+              resolve(data.payment_id);
+            })
+            .fail(function(err) {
+              reject(err.statusText);
+            })
       },
 
       onAuthorize: function(data) {
@@ -365,9 +364,12 @@ function TimekitBooking() {
           client: client
         };
         consultationKitSkd.createBooking(bookingArgs)
-            .done(function(d) {
+            .done(function() {
               $("#paypal-button").hide();
-              $("#book-button").show();
+              $("#booking-page-title").text('Booking Complete!');
+              $(".bookingjs-form-fields").hide();
+              $(".bookingjs-form-success-message .booked-email").text(bookingArgs.client.email);
+              $(".bookingjs-form-success-message").show();
             })
             .fail(function(err) {
                 console.log('error: ', err)
@@ -395,110 +397,6 @@ function TimekitBooking() {
     $(document).off('keyup');
 
   };
-
-  // Event handler on form submit
-  var submitBookingForm = function(form, e) {
-    console.log("form submitted");
-
-    e.preventDefault();
-
-    var formElement = $(form);
-
-    // Abort if form is submitting, have submitted or does not validate
-    if(formElement.hasClass('loading') || formElement.hasClass('success') || formElement.hasClass('error') || !e.target.checkValidity()) {
-      var submitButton = formElement.find('.bookingjs-form-button');
-      submitButton.addClass('button-shake');
-      setTimeout(function() {
-        submitButton.removeClass('button-shake');
-      }, 500);
-      return;
-    }
-
-    var values = {};
-    $.each(formElement.serializeArray(), function(i, field) {
-        values[field.name] = field.value;
-    });
-
-    formElement.addClass('loading');
-
-    utils.doCallback('submitBookingForm', config, values);
-
-    // Call create event endpoint
-    timekitCreateBooking(values).then(function(response){
-
-      utils.doCallback('createBookingSuccessful', config, response);
-
-      formElement.find('.booked-email').html(values.email);
-      formElement.removeClass('loading').addClass('success');
-
-    }).catch(function(response){
-
-      utils.doCallback('createBookingFailed', config, response);
-
-      var submitButton = formElement.find('.bookingjs-form-button');
-      submitButton.addClass('button-shake');
-      setTimeout(function() {
-        submitButton.removeClass('button-shake');
-      }, 500);
-
-      formElement.removeClass('loading').addClass('error');
-      setTimeout(function() {
-        formElement.removeClass('error');
-      }, 2000);
-
-      utils.logError('An error with Timekit createBooking occured, context: ' + response);
-    });
-
-  };
-
-  // Create new booking
-  var timekitCreateBooking = function(data) {
-
-    var args = {
-      event: {
-        start: data.start,
-        end: data.end,
-        what: config.name + ' x ' + data.name,
-        where: 'TBD',
-        description: '',
-        calendar_id: config.calendar,
-        participants: [data.email]
-      },
-      customer: {
-        name: data.name,
-        email: data.email,
-        timezone: moment.tz.guess()
-      }
-    };
-
-    if (config.bookingFields.location.enabled) { args.event.where = data.location; }
-    if (config.bookingFields.comment.enabled) {
-      args.event.description += config.bookingFields.comment.placeholder + ': ' + data.comment + '\n';
-    }
-    if (config.bookingFields.phone.enabled) {
-      args.customer.phone = data.phone;
-      args.event.description += config.bookingFields.phone.placeholder + ': ' + data.phone + '\n';
-    }
-    if (config.bookingFields.voip.enabled) {
-      args.customer.voip = data.voip;
-      args.event.description += config.bookingFields.voip.placeholder + ': ' + data.voip + '\n';
-    }
-
-    $.extend(true, args, config.timekitCreateBooking);
-
-    utils.doCallback('createBookingStarted', config, args);
-
-    var requestHeaders = {
-      'Timekit-OutputTimestampFormat': 'Y-m-d ' + config.localization.emailTimeFormat + ' (P e)'
-    };
-
-    return timekit
-    .include('attributes', 'event')
-    .headers(requestHeaders)
-    .createBooking(args);
-
-  };
-
 
   // Set config defaults
   var setConfigDefaults = function(suppliedConfig) {

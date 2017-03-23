@@ -115,9 +115,8 @@ ConsultationKitSdk.prototype.getUserTimezone = function(args) {
     return new Promise(function(resolve, reject) {
         resolve({data :{
             timezone: 'America/New_York',
-            utc_offset: -5
+            utc_offset: -4
         }})
-
     })
 };
 

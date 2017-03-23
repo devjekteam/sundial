@@ -8,6 +8,7 @@ var primary = {
 
   targetEl: '#bookingjs',
   name: '',
+  calendar_name: '',
   avatar: '',
   autoload: true,
   includeStyles: true,

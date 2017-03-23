@@ -297,9 +297,9 @@ function ConsultationKitBooking() {
   // Render the avatar image
   var renderDisplayName = function() {
 
-    var template = require('./templates/user-displayname.html');
+    var template = require('./templates/calendar-displayname.html');
     var displayNameTarget = $(template.render({
-      name: config.name
+      calendar_name: config.calendar_name
     }));
 
     rootTarget.addClass('has-displayname');

@@ -513,7 +513,7 @@ function ConsultationKitBooking() {
         return loadRemoteConfig(suppliedConfig)
             .done(function (response) {
               var mergedConfig = $.extend(true, {}, response, suppliedConfig);
-              start(mergedConfig)
+              start(mergedConfig);
             })
   };
 

@@ -569,7 +569,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	        return loadRemoteConfig(suppliedConfig)
 	            .done(function (response) {
 	              var mergedConfig = $.extend(true, {}, response, suppliedConfig);
-	              start(mergedConfig)
+	              console.log(mergedConfig);
+	              start(mergedConfig);
 	            })
 	  };
 	

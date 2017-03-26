@@ -28,8 +28,9 @@ $fontFamily:        'Roboto', Helvetica, Tahoma, Arial, sans-serif;
   border-radius: 4px;
   background-color: white;
   box-shadow: rgba(0, 0, 0, 0.2) 0px 2px 4px 0px;
-  margin: 20px auto 20px auto;
-  max-width: 972px;
+  margin: 0;
+  max-width: 1076px;
+  width: 100%;
   z-index: 10;
   opacity: 0;
   color: $textColor;
@@ -128,6 +129,8 @@ $fontFamily:        'Roboto', Helvetica, Tahoma, Arial, sans-serif;
       left: 90px;
       right: 90px;
       box-sizing: border-box;
+      padding: 10px 0;
+      font-size: 12px;
     }
     .is-small.has-avatar & {
       top: 44px;

@@ -63,6 +63,9 @@ function ConsultationKitBooking() {
 
       utils.doCallback('findTimeSuccessful', config, response);
 
+      // Render available timeslots in FullCalendar
+      renderCalendarEvents(response.data);
+
       // Go to first event if enabled
       if(config.goToFirstEvent && response.data.length > 0) {
         var firstEventStart = response.data[0].start;
@@ -70,9 +73,6 @@ function ConsultationKitBooking() {
         goToDate(firstEventStart);
         scrollToTime(firstEventStartHour);
       }
-
-      // Render available timeslots in FullCalendar
-      renderCalendarEvents(response.data);
     });
   };
 
@@ -118,7 +118,6 @@ function ConsultationKitBooking() {
     if (scrollTo > maximumHeight - scrollableHeight) {
       scrollTo = maximumHeight - scrollableHeight;
     }
-
     // Perform the scrollTo animation
     scrollable.animate({scrollTop: scrollTo});
 
@@ -160,16 +159,18 @@ function ConsultationKitBooking() {
   };
 
   // Setup and render FullCalendar
-  var initializeCalendar = function(editCalendar) {
+  var initializeCalendar = function() {
 
     var sizing = decideCalendarSize();
+    calendarTarget = $('<div class="bookingjs-calendar empty-calendar">');
 
-    if (editCalendar) {
+    if (config.editCalendar) {
       var args = {
         defaultView: sizing.view,
         height: sizing.height,
         eventClick: function(e) {
           console.log(e);
+          alert('Do you want to delete this availability?');
         },
         windowResize: function() {
           var sizing = decideCalendarSize();
@@ -192,8 +193,8 @@ function ConsultationKitBooking() {
 
           consultationKitSkd.createAvailability(args);
 
-          $('#calendar').fullCalendar('renderEvent', eventData, true);
-          $('#calendar').fullCalendar('unselect');
+          calendarTarget.fullCalendar('renderEvent', eventData, true);
+          calendarTarget.fullCalendar('unselect');
         }
       };
     } else {
@@ -212,7 +213,6 @@ function ConsultationKitBooking() {
 
     $.extend(true, args, config.fullCalendar);
 
-    calendarTarget = $('<div class="bookingjs-calendar empty-calendar">');
     rootTarget.append(calendarTarget);
 
     calendarTarget.fullCalendar(args);
@@ -274,7 +274,6 @@ function ConsultationKitBooking() {
 
   };
 
-  // Render the avatar image
   var renderDisplayName = function() {
 
     var template = require('./templates/calendar-displayname.html');
@@ -475,7 +474,7 @@ function ConsultationKitBooking() {
     setupConfig();
 
     // Initialize FullCalendar
-    initializeCalendar(config.editCalendar);
+    initializeCalendar();
 
     // Get availabilities
     findTime();
@@ -491,7 +490,7 @@ function ConsultationKitBooking() {
     }
 
     // Print out display name
-    if (config.name) {
+    if (config.calendar_name) {
       renderDisplayName();
     }
 

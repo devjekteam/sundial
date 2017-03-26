@@ -111,7 +111,7 @@ ConsultationKitSdk.prototype.findTime = function(args) {
   });
 }
 
-ConsultationKitSdk.prototype.getUserTimezone = function(args) {
+ConsultationKitSdk.prototype.getUserTimezone = function(userId) {
     return new Promise(function(resolve, reject) {
         resolve({data :{
             timezone: 'America/New_York',
@@ -120,6 +120,16 @@ ConsultationKitSdk.prototype.getUserTimezone = function(args) {
     })
 };
 
+ConsultationKitSdk.prototype.getCalendarConfig = function(id) {
+    var url = this.baseUrl + 'calendars/' + id + '/config';
+    return $.ajax({'url': url, 'type':'GET',
+            'headers': {
+                "authorization": this.apiToken
+            },
+            contentType: "application/json"
+        }
+    );
+};
 
 ConsultationKitSdk.prototype.createAvailability = function(args) {
   // length in minutes

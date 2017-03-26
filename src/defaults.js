@@ -11,6 +11,7 @@ var primary = {
   calendar_name: '',
   avatar: '',
   autoload: true,
+  localConfig: false,
   includeStyles: true,
   showCredits: false,
   goToFirstEvent: true,
@@ -18,6 +19,10 @@ var primary = {
   possibleLengths: {
     'Normal': '1 hour',
     'Long': '2 hour'
+  },
+  timezone: {
+    timezone: 'America/New_York',
+    utc_offset: -4
   },
   bookingFields: {
     first_name: {

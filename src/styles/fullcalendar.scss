@@ -66,6 +66,7 @@ $primaryDarkColor: darken($primaryColor, 10%);
   padding: 0px;
   margin-bottom: 0;
   border-bottom: 1px solid $borderColor;
+  min-height: 49px;
 
   > * > button {
     padding: 15px 17px;

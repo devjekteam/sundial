@@ -78,6 +78,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	  var calendarTarget;
 	  var bookingPageTarget;
 	
+	  var times_loaded = [];
+	
 	  // Inject style dependencies
 	  var includeStyles = function() {
 	    __webpack_require__(13);
@@ -104,32 +106,37 @@ return /******/ (function(modules) { // webpackBootstrap
 	  };
 	
 	  // Fetch availabile time through Consultation Kit SDK
-	  var findTime = function() {
+	  var findTime = function(start, days) {
 	
 	    var args = {};
-	
+	    args['start'] = start;
+	    args['days'] = days
 	    args['calendarId'] = config.calendar;
 	    args['editCalendar'] = config.editCalendar;
 	    args['userId'] = config.userId;
 	
 	    utils.doCallback('findTimeStarted', config, args);
 	
-	    consultationKitSkd.findTime(args)
-	    .then(function(response){
+	    if (times_loaded.indexOf(start.toISOString()) === -1) {
+	      consultationKitSkd.findTime(args)
+	          .then(function (response) {
 	
-	      utils.doCallback('findTimeSuccessful', config, response);
+	            times_loaded.push(start.toISOString());
 	
-	      // Render available timeslots in FullCalendar
-	      renderCalendarEvents(response.data);
+	            utils.doCallback('findTimeSuccessful', config, response);
 	
-	      // Go to first event if enabled
-	      if(config.goToFirstEvent && response.data.length > 0) {
-	        var firstEventStart = response.data[0].start;
-	        var firstEventStartHour = moment(firstEventStart).format('H');
-	        goToDate(firstEventStart);
-	        scrollToTime(firstEventStartHour);
-	      }
-	    });
+	            // Render available timeslots in FullCalendar
+	            renderCalendarEvents(response.data);
+	
+	            // Go to first event if enabled
+	            if (config.goToFirstEvent && response.data.length > 0) {
+	              var firstEventStart = response.data[0].start;
+	              var firstEventStartHour = moment(firstEventStart).format('H');
+	              goToDate(firstEventStart);
+	              scrollToTime(firstEventStartHour);
+	            }
+	          });
+	    }
 	  };
 	
 	  // Tells FullCalendar to go to a specifc date
@@ -220,14 +227,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	    var sizing = decideCalendarSize();
 	    calendarTarget = $('<div class="bookingjs-calendar empty-calendar">');
 	
+	    var fullCalendarArgs;
 	    if (config.editCalendar) {
-	      var args = {
+	      fullCalendarArgs = {
 	        defaultView: sizing.view,
 	        height: sizing.height,
-	        eventClick: function(e) {
-	          console.log(e);
-	          alert('Do you want to delete this availability?');
-	        },
 	        windowResize: function() {
 	          var sizing = decideCalendarSize();
 	          calendarTarget.fullCalendar('changeView', sizing.view);
@@ -236,25 +240,32 @@ return /******/ (function(modules) { // webpackBootstrap
 	        selectable: true,
 	        selectHelper: true,
 	        editable: true,
+	        eventOverlap: false,
+	        eventDrop: function(event) {
+	          consultationKitSkd.updateAvailability(event.availabilityId, event.start, event.end);
+	        },
+	        eventResize: function(event) {
+	          consultationKitSkd.updateAvailability(event.availabilityId, event.start, event.end);
+	        },
 	        select: function(start, end) {
-	          var eventData = {
-	            start: start,
-	            end: end
-	          };
-	
-	          var args = Object.assign({}, eventData, {
-	            'userId': config.userId,
-	            'apiToken': config.apiToken
-	          });
-	
-	          consultationKitSkd.createAvailability(args);
-	
-	          calendarTarget.fullCalendar('renderEvent', eventData, true);
-	          calendarTarget.fullCalendar('unselect');
+	          consultationKitSkd.createAvailability(start, end)
+	              .done(function(availability) {
+	                calendarTarget.fullCalendar('renderEvent',
+	                    { availabilityId: availability.id, start: start, end: end }, false);
+	                calendarTarget.fullCalendar('unselect');
+	              });
+	        },
+	        eventClick: function(e) {
+	          console.log(e);
+	          confirm('Do you want to delete this availability?');
+	        },
+	        viewRender: function(view) {
+	          var days = view.intervalUnit === 'day' ? 1 : 7;
+	          findTime(view.start, days);
 	        }
 	      };
 	    } else {
-	      var args = {
+	      fullCalendarArgs = {
 	        defaultView: sizing.view,
 	        height: sizing.height,
 	        eventClick: showBookingPage,
@@ -262,16 +273,20 @@ return /******/ (function(modules) { // webpackBootstrap
 	          var sizing = decideCalendarSize();
 	          calendarTarget.fullCalendar('changeView', sizing.view);
 	          calendarTarget.fullCalendar('option', 'height', sizing.height);
+	        },
+	        viewRender: function(view) {
+	          var days = view.intervalUnit === 'day' ? 1 : 7;
+	          findTime(view.start, days);
 	        }
 	      };
 	    }
 	
 	
-	    $.extend(true, args, config.fullCalendar);
+	    $.extend(true, fullCalendarArgs, config.fullCalendar);
 	
 	    rootTarget.append(calendarTarget);
 	
-	    calendarTarget.fullCalendar(args);
+	    calendarTarget.fullCalendar(fullCalendarArgs);
 	    rootTarget.addClass('show');
 	
 	    utils.doCallback('fullCalendarInitialized', config);
@@ -362,7 +377,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      successMessageTitle:  config.localization.strings.successMessageTitle,
 	      successMessageBody:   interpolate.sprintf(config.localization.strings.successMessageBody, '<span class="booked-email"></span>'),
 	      fields:               config.bookingFields,
-	      meetingCost:          config.meetingCost
+	      pricePerMeeting:      config.pricePerMeeting
 	    }, {
 	      formFields: fieldsTemplate
 	    }));
@@ -499,7 +514,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    finalConfig = $.extend(true, {}, presetsConfig, finalConfig);
 	
 	    // Check for required settings
-	    if(!finalConfig.apiToken || !finalConfig.calendar) {
+	    if(!finalConfig.apiToken || (!finalConfig.calendar && !finalConfig.editCalendar)) {
 	      utils.logError('A required config setting was missing ("apiToken" or "calendar")');
 	    }
 	
@@ -532,22 +547,19 @@ return /******/ (function(modules) { // webpackBootstrap
 	    // Initialize FullCalendar
 	    initializeCalendar();
 	
-	    // Get availabilities
-	    findTime();
-	
 	    // Show timezone helper if enabled
 	    if (config.localization.showTimezoneHelper) {
-	      renderTimezoneHelper();
+	        renderTimezoneHelper();
 	    }
 	
 	    // Show image avatar if set
 	    if (config.avatar) {
-	      renderAvatarImage();
+	        renderAvatarImage();
 	    }
 	
 	    // Print out display name
 	    if (config.calendar_name) {
-	      renderDisplayName();
+	        renderDisplayName();
 	    }
 	
 	    utils.doCallback('renderCompleted', config);
@@ -18271,22 +18283,20 @@ return /******/ (function(modules) { // webpackBootstrap
 /* 7 */
 /***/ function(module, exports) {
 
-	// idk if this is how its supposed to work or what
-	
 	function ConsultationKitSdk() {
 	  if (!(this instanceof ConsultationKitSdk)) {
 	    return new ConsultationKitSdk();
 	  }
 	
-	  this.userId;
-	  this.apiToken;
+	  this.userId = null;
+	  this.apiToken = '';
 	  this.baseUrl = 'http://localhost:5000/';
 	}
 	
 	ConsultationKitSdk.prototype.setUser = function(userId, apiToken) {
-	  this.userId = userId;
-	  this.apiToken = apiToken;
-	}
+	    this.userId = userId;
+	    this.apiToken = apiToken;
+	};
 	
 	ConsultationKitSdk.prototype.createPayment = function(calendarId) {
 	
@@ -18301,7 +18311,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	            contentType: "application/json"
 	        }
 	    );
-	}
+	};
 	
 	ConsultationKitSdk.prototype.createBooking = function(args) {
 	
@@ -18322,75 +18332,69 @@ return /******/ (function(modules) { // webpackBootstrap
 	            })
 	        }
 	    );
-	}
+	};
 	
 	ConsultationKitSdk.prototype.findTime = function(args) {
-	  function addToTimes(availabilities, times) {
-	    for (var i = 0; i < availabilities.length; i++) {
-	      times.push({
-	        start: availabilities[i].start_datetime,
-	        end: availabilities[i].end_datetime,
-	        availabilityId: availabilities[i].availability_id
-	      })
+	    function addToTimes(availabilities, times) {
+	        for (var i = 0; i < availabilities.length; i++) {
+	            times.push({
+	                start: availabilities[i].start_datetime,
+	                end: availabilities[i].end_datetime,
+	                availabilityId: availabilities[i].availability_id
+	            })
+	        }
 	    }
-	  }
 	
-	  function getAvailabilities(days, times, baseUrl, apiToken) {
-	      var now = moment();
-	      var end = moment(now).endOf('day');
+	    function getAvailabilities(times, baseUrl, apiToken) {
+	        var start_of_week = args.start;
+	        var end_of_first_day = moment(start_of_week).endOf('day');
 	
-	      const availabilityPromises = [];
+	        var availabilityPromises = [];
+	        var shouldSkip = false;
 	
-	      for (var i = 0; i < days; i++) {
-	        var start_time;
+	        for (var i = 0; i < args.days; i++) {
+	            var start_of_day = moment(start_of_week).add(i, 'day');
 	
-	        if (i != 0) {
-	          start_time = moment(now).startOf('day');
-	        } else {
-	          start_time = moment(now);
-	        }
+	            var start_datetime = RFC3339DateString(start_of_day);
+	            var end_datetime = RFC3339DateString(moment(end_of_first_day).add(i, 'day'));
 	
-	        const start_datetime = RFC3339DateString(moment(start_time).add(i, 'day'));
-	        const end_datetime = RFC3339DateString(moment(end).add(i, 'day'));
-	
-	        var url;
-	        if (args.editCalendar) {
-	          url = baseUrl + 'users/' + args.userId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
-	        } else {
-	          url = baseUrl + 'calendars/' + args.calendarId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
-	        }
-	        availabilityPromises.push(
-	          $.ajax({'url': url, 'type':'GET',
-	                  'headers': {
-	                    "authorization": apiToken
-	                  },
-	                  success: function(result) {
-	                    addToTimes(result.availabilities, times)
-	                  }
+	            if (start_of_day.isBefore(moment()) && !args.editCalendar) {
+	                if (start_of_day.isSame(moment(), 'day'))
+	                    start_datetime = RFC3339DateString(moment());
+	                else
+	                    shouldSkip = true;
+	            }
+	            if (!shouldSkip) {
+	                var url;
+	                if (args.editCalendar) {
+	                    url = baseUrl + 'users/' + args.userId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
+	                } else {
+	                    url = baseUrl + 'calendars/' + args.calendarId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
 	                }
-	              )
-	            );
-	      }
+	                availabilityPromises.push(
+	                    $.ajax({
+	                        'url': url, 'type': 'GET',
+	                        'headers': {
+	                            "authorization": apiToken
+	                        },
+	                        success: function (result) {
+	                            addToTimes(result.availabilities, times)
+	                        }
+	                    })
+	                );
+	            }
+	            shouldSkip = false;
+	        }
+	        return availabilityPromises;
+	    }
 	
-	      return availabilityPromises;
-	  }
+	    var times = [];
+	    const availPromises = getAvailabilities(times, this.baseUrl, this.apiToken);
 	
-	  var times = [];
-	  const availPromises = getAvailabilities(7, times, this.baseUrl, this.apiToken);
-	
-	  // // jacked up query promise
-	  return $.when.apply($, availPromises).then(function() {
+	    // // jacked up query promise
+	    return $.when.apply($, availPromises).then(function() {
 	    return {data: times};
-	  });
-	}
-	
-	ConsultationKitSdk.prototype.getUserTimezone = function(userId) {
-	    return new Promise(function(resolve, reject) {
-	        resolve({data :{
-	            timezone: 'America/New_York',
-	            utc_offset: -4
-	        }})
-	    })
+	    });
 	};
 	
 	ConsultationKitSdk.prototype.getCalendarConfig = function(id) {
@@ -18404,15 +18408,15 @@ return /******/ (function(modules) { // webpackBootstrap
 	    );
 	};
 	
-	ConsultationKitSdk.prototype.createAvailability = function(args) {
+	ConsultationKitSdk.prototype.createAvailability = function(start, end) {
 	  // length in minutes
-	  var length = args.end.diff(args.start) / (60000);
+	  var length = end.diff(start) / (60000);
 	
 	  var payload = {
-	    user_id: args.userId,
-	    start_datetime: RFC3339DateString(args.start),
+	    user_id: this.userId,
+	    start_datetime: RFC3339DateString(start),
 	    length_minutes: length
-	  }
+	  };
 	
 	  return $.ajax({
 	    url: this.baseUrl + 'availabilities',
@@ -18421,10 +18425,33 @@ return /******/ (function(modules) { // webpackBootstrap
 	    contentType: 'application/json',
 	    dataType: "json",
 	    'headers': {
-	      "authorization": args.apiToken
+	      "authorization": this.apiToken
 	    }
 	  })
-	}
+	};
+	
+	ConsultationKitSdk.prototype.updateAvailability = function(availabilityId, startTime, endTime) {
+	
+	    var start = $.extend(true, {}, startTime);
+	    var end = $.extend(true, {}, endTime);
+	
+	    var payload = {
+	        user_id: this.userId,
+	        start_datetime: RFC3339DateString(start),
+	        end_datetime: RFC3339DateString(end)
+	    };
+	
+	    $.ajax({
+	        url: this.baseUrl + 'availabilities/' + availabilityId,
+	        type: 'PUT',
+	        data: JSON.stringify(payload),
+	        contentType: 'application/json',
+	        dataType: "json",
+	        'headers': {
+	            "authorization": this.apiToken
+	        }
+	    })
+	};
 	
 	
 	module.exports = ConsultationKitSdk;
@@ -19950,10 +19977,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	var primary = {
 	
-	  targetEl: '#bookingjs',
+	  targetEl: '#ck-widget',
 	  name: '',
 	  calendar_name: '',
 	  avatar: '',
+	  pricePerMeeting: 50,
+	  userId: null,
 	  autoload: true,
 	  localConfig: false,
 	  includeStyles: true,
@@ -20013,15 +20042,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	      locked: false
 	    }
 	  },
-	  timekitConfig: {
-	    app: 'bookingjs'
-	  },
-	  timekitFindTime: {
-	    future: '4 weeks',
-	    length: '1 hour'
-	  },
-	  timekitCreateBooking: { },
-	  timekitUpdateBooking: { },
 	  fullCalendar: {
 	    header: {
 	      left: '',
@@ -21462,7 +21482,7 @@ return /******/ (function(modules) { // webpackBootstrap
 /***/ function(module, exports, __webpack_require__) {
 
 	var H = __webpack_require__(25);
-	module.exports = function() { var T = new H.Template({code: function (c,p,i) { var t=this;t.b(i=i||"");t.b("<div class=\"bookingjs-bookpage\">");t.b("\n" + i);t.b("  <a class=\"bookingjs-bookpage-close\" href=\"#\">");t.b(t.t(t.f("closeIcon",c,p,0)));t.b("</a>");t.b("\n" + i);t.b("  <form id=\"ck-form\" class=\"bookingjs-form\" action=\"#\">");t.b("\n" + i);t.b("    <div class=\"bookingjs-bookpage-content\">");t.b("\n" + i);t.b("      <div class=\"bookingjs-bookpage-header\">");t.b("\n" + i);t.b("        <span id=\"booking-page-title\">Complete your booking</span>");t.b("\n" + i);t.b("      </div>");t.b("\n" + i);t.b("      <div class=\"bookingjs-bookpage-container\">");t.b("\n" + i);t.b("        <div class=\"bookingjs-bookpage-content-booking-info\">");t.b("\n" + i);t.b("          <div class=\"bookingjs-bookpage-content-booking-info-header\">");t.b("\n" + i);t.b("            <span class=\"bookingjs-col\">Time</span>");t.b("\n" + i);t.b("            <span class=\"bookingjs-col right-align\">Cost</span>");t.b("\n" + i);t.b("          </div>");t.b("\n" + i);t.b("          <div class=\"bookingjs-bookpage-content-booking-info-body\">");t.b("\n" + i);t.b("            <div class=\"bookingjs-col\">");t.b("\n" + i);t.b("              <h2 class=\"bookingjs-bookpage-date\">");t.b(t.v(t.f("chosenDate",c,p,0)));t.b("</h2>");t.b("\n" + i);t.b("              <h3 class=\"bookingjs-bookpage-time\">");t.b(t.v(t.f("chosenTime",c,p,0)));t.b("</h3>");t.b("\n" + i);t.b("            </div>");t.b("\n" + i);t.b("            <div class=\"bookingjs-col right-align\">");t.b("\n" + i);t.b("              <span class=\"bookingjs-bookpage-content-booking-info-body-price\">$");t.b(t.v(t.f("meetingCost",c,p,0)));t.b("</span>");t.b("\n" + i);t.b("            </div>");t.b("\n" + i);t.b("            <div class=\"clear\"></div>");t.b("\n" + i);t.b("          </div>");t.b("\n" + i);t.b("        </div>");t.b("\n" + i);t.b("        <div class=\"bookingjs-form-box\">");t.b("\n" + i);t.b("          <div class=\"bookingjs-form-success-message\">");t.b("\n" + i);t.b("            <div class=\"title\">");t.b(t.v(t.f("successMessageTitle",c,p,0)));t.b("</div>");t.b("\n" + i);t.b("            <div class=\"body\">");t.b(t.t(t.f("successMessageBody",c,p,0)));t.b("</div>");t.b("\n" + i);t.b("          </div>");t.b("\n" + i);t.b("          <div class=\"bookingjs-form-fields\">");t.b("\n" + i);t.b(t.rp("<formFields0",c,p,"            "));t.b("          </div>");t.b("\n" + i);t.b("        </div>");t.b("\n" + i);t.b("      </div>");t.b("\n" + i);t.b("    </div>");t.b("\n" + i);t.b("    <div class=\"bookingjs-bookpage-footer\">");t.b("\n" + i);t.b("      <div id=\"paypal-button\"></div>");t.b("\n" + i);t.b("    </div>");t.b("\n" + i);t.b("  </form>");t.b("\n" + i);t.b("</div>");return t.fl(); },partials: {"<formFields0":{name:"formFields", partials: {}, subs: {  }}}, subs: {  }}, "<div class=\"bookingjs-bookpage\">\n  <a class=\"bookingjs-bookpage-close\" href=\"#\">{{& closeIcon }}</a>\n  <form id=\"ck-form\" class=\"bookingjs-form\" action=\"#\">\n    <div class=\"bookingjs-bookpage-content\">\n      <div class=\"bookingjs-bookpage-header\">\n        <span id=\"booking-page-title\">Complete your booking</span>\n      </div>\n      <div class=\"bookingjs-bookpage-container\">\n        <div class=\"bookingjs-bookpage-content-booking-info\">\n          <div class=\"bookingjs-bookpage-content-booking-info-header\">\n            <span class=\"bookingjs-col\">Time</span>\n            <span class=\"bookingjs-col right-align\">Cost</span>\n          </div>\n          <div class=\"bookingjs-bookpage-content-booking-info-body\">\n            <div class=\"bookingjs-col\">\n              <h2 class=\"bookingjs-bookpage-date\">{{ chosenDate }}</h2>\n              <h3 class=\"bookingjs-bookpage-time\">{{ chosenTime }}</h3>\n            </div>\n            <div class=\"bookingjs-col right-align\">\n              <span class=\"bookingjs-bookpage-content-booking-info-body-price\">${{ meetingCost }}</span>\n            </div>\n            <div class=\"clear\"></div>\n          </div>\n        </div>\n        <div class=\"bookingjs-form-box\">\n          <div class=\"bookingjs-form-success-message\">\n            <div class=\"title\">{{ successMessageTitle }}</div>\n            <div class=\"body\">{{& successMessageBody }}</div>\n          </div>\n          <div class=\"bookingjs-form-fields\">\n            {{> formFields }}\n          </div>\n        </div>\n      </div>\n    </div>\n    <div class=\"bookingjs-bookpage-footer\">\n      <div id=\"paypal-button\"></div>\n    </div>\n  </form>\n</div>", H);return T; }();
+	module.exports = function() { var T = new H.Template({code: function (c,p,i) { var t=this;t.b(i=i||"");t.b("<div class=\"bookingjs-bookpage\">");t.b("\n" + i);t.b("  <a class=\"bookingjs-bookpage-close\" href=\"#\">");t.b(t.t(t.f("closeIcon",c,p,0)));t.b("</a>");t.b("\n" + i);t.b("  <form id=\"ck-form\" class=\"bookingjs-form\" action=\"#\">");t.b("\n" + i);t.b("    <div class=\"bookingjs-bookpage-content\">");t.b("\n" + i);t.b("      <div class=\"bookingjs-bookpage-header\">");t.b("\n" + i);t.b("        <span id=\"booking-page-title\">Complete your booking</span>");t.b("\n" + i);t.b("      </div>");t.b("\n" + i);t.b("      <div class=\"bookingjs-bookpage-container\">");t.b("\n" + i);t.b("        <div class=\"bookingjs-bookpage-content-booking-info\">");t.b("\n" + i);t.b("          <div class=\"bookingjs-bookpage-content-booking-info-header\">");t.b("\n" + i);t.b("            <span class=\"bookingjs-col\">Time</span>");t.b("\n" + i);t.b("            <span class=\"bookingjs-col right-align\">Cost</span>");t.b("\n" + i);t.b("          </div>");t.b("\n" + i);t.b("          <div class=\"bookingjs-bookpage-content-booking-info-body\">");t.b("\n" + i);t.b("            <div class=\"bookingjs-col\">");t.b("\n" + i);t.b("              <h2 class=\"bookingjs-bookpage-date\">");t.b(t.v(t.f("chosenDate",c,p,0)));t.b("</h2>");t.b("\n" + i);t.b("              <h3 class=\"bookingjs-bookpage-time\">");t.b(t.v(t.f("chosenTime",c,p,0)));t.b("</h3>");t.b("\n" + i);t.b("            </div>");t.b("\n" + i);t.b("            <div class=\"bookingjs-col right-align\">");t.b("\n" + i);t.b("              <span class=\"bookingjs-bookpage-content-booking-info-body-price\">$");t.b(t.v(t.f("pricePerMeeting",c,p,0)));t.b("</span>");t.b("\n" + i);t.b("            </div>");t.b("\n" + i);t.b("            <div class=\"clear\"></div>");t.b("\n" + i);t.b("          </div>");t.b("\n" + i);t.b("        </div>");t.b("\n" + i);t.b("        <div class=\"bookingjs-form-box\">");t.b("\n" + i);t.b("          <div class=\"bookingjs-form-success-message\">");t.b("\n" + i);t.b("            <div class=\"title\">");t.b(t.v(t.f("successMessageTitle",c,p,0)));t.b("</div>");t.b("\n" + i);t.b("            <div class=\"body\">");t.b(t.t(t.f("successMessageBody",c,p,0)));t.b("</div>");t.b("\n" + i);t.b("          </div>");t.b("\n" + i);t.b("          <div class=\"bookingjs-form-fields\">");t.b("\n" + i);t.b(t.rp("<formFields0",c,p,"            "));t.b("          </div>");t.b("\n" + i);t.b("        </div>");t.b("\n" + i);t.b("      </div>");t.b("\n" + i);t.b("    </div>");t.b("\n" + i);t.b("    <div class=\"bookingjs-bookpage-footer\">");t.b("\n" + i);t.b("      <div id=\"paypal-button\"></div>");t.b("\n" + i);t.b("    </div>");t.b("\n" + i);t.b("  </form>");t.b("\n" + i);t.b("</div>");return t.fl(); },partials: {"<formFields0":{name:"formFields", partials: {}, subs: {  }}}, subs: {  }}, "<div class=\"bookingjs-bookpage\">\n  <a class=\"bookingjs-bookpage-close\" href=\"#\">{{& closeIcon }}</a>\n  <form id=\"ck-form\" class=\"bookingjs-form\" action=\"#\">\n    <div class=\"bookingjs-bookpage-content\">\n      <div class=\"bookingjs-bookpage-header\">\n        <span id=\"booking-page-title\">Complete your booking</span>\n      </div>\n      <div class=\"bookingjs-bookpage-container\">\n        <div class=\"bookingjs-bookpage-content-booking-info\">\n          <div class=\"bookingjs-bookpage-content-booking-info-header\">\n            <span class=\"bookingjs-col\">Time</span>\n            <span class=\"bookingjs-col right-align\">Cost</span>\n          </div>\n          <div class=\"bookingjs-bookpage-content-booking-info-body\">\n            <div class=\"bookingjs-col\">\n              <h2 class=\"bookingjs-bookpage-date\">{{ chosenDate }}</h2>\n              <h3 class=\"bookingjs-bookpage-time\">{{ chosenTime }}</h3>\n            </div>\n            <div class=\"bookingjs-col right-align\">\n              <span class=\"bookingjs-bookpage-content-booking-info-body-price\">${{ pricePerMeeting }}</span>\n            </div>\n            <div class=\"clear\"></div>\n          </div>\n        </div>\n        <div class=\"bookingjs-form-box\">\n          <div class=\"bookingjs-form-success-message\">\n            <div class=\"title\">{{ successMessageTitle }}</div>\n            <div class=\"body\">{{& successMessageBody }}</div>\n          </div>\n          <div class=\"bookingjs-form-fields\">\n            {{> formFields }}\n          </div>\n        </div>\n      </div>\n    </div>\n    <div class=\"bookingjs-bookpage-footer\">\n      <div id=\"paypal-button\"></div>\n    </div>\n  </form>\n</div>", H);return T; }();
 
 /***/ },
 /* 32 */

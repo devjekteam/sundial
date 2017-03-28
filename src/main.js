@@ -22,6 +22,8 @@ function ConsultationKitBooking() {
   var calendarTarget;
   var bookingPageTarget;
 
+  var times_loaded = [];
+
   // Inject style dependencies
   var includeStyles = function() {
     require('../node_modules/fullcalendar/dist/fullcalendar.css');
@@ -48,32 +50,37 @@ function ConsultationKitBooking() {
   };
 
   // Fetch availabile time through Consultation Kit SDK
-  var findTime = function() {
+  var findTime = function(start, days) {
 
     var args = {};
-
+    args['start'] = start;
+    args['days'] = days
     args['calendarId'] = config.calendar;
     args['editCalendar'] = config.editCalendar;
     args['userId'] = config.userId;
 
     utils.doCallback('findTimeStarted', config, args);
 
-    consultationKitSkd.findTime(args)
-    .then(function(response){
+    if (times_loaded.indexOf(start.toISOString()) === -1) {
+      consultationKitSkd.findTime(args)
+          .then(function (response) {
 
-      utils.doCallback('findTimeSuccessful', config, response);
+            times_loaded.push(start.toISOString());
 
-      // Render available timeslots in FullCalendar
-      renderCalendarEvents(response.data);
+            utils.doCallback('findTimeSuccessful', config, response);
 
-      // Go to first event if enabled
-      if(config.goToFirstEvent && response.data.length > 0) {
-        var firstEventStart = response.data[0].start;
-        var firstEventStartHour = moment(firstEventStart).format('H');
-        goToDate(firstEventStart);
-        scrollToTime(firstEventStartHour);
-      }
-    });
+            // Render available timeslots in FullCalendar
+            renderCalendarEvents(response.data);
+
+            // Go to first event if enabled
+            if (config.goToFirstEvent && response.data.length > 0) {
+              var firstEventStart = response.data[0].start;
+              var firstEventStartHour = moment(firstEventStart).format('H');
+              goToDate(firstEventStart);
+              scrollToTime(firstEventStartHour);
+            }
+          });
+    }
   };
 
   // Tells FullCalendar to go to a specifc date
@@ -164,14 +171,11 @@ function ConsultationKitBooking() {
     var sizing = decideCalendarSize();
     calendarTarget = $('<div class="bookingjs-calendar empty-calendar">');
 
+    var fullCalendarArgs;
     if (config.editCalendar) {
-      var args = {
+      fullCalendarArgs = {
         defaultView: sizing.view,
         height: sizing.height,
-        eventClick: function(e) {
-          console.log(e);
-          alert('Do you want to delete this availability?');
-        },
         windowResize: function() {
           var sizing = decideCalendarSize();
           calendarTarget.fullCalendar('changeView', sizing.view);
@@ -180,25 +184,32 @@ function ConsultationKitBooking() {
         selectable: true,
         selectHelper: true,
         editable: true,
+        eventOverlap: false,
+        eventDrop: function(event) {
+          consultationKitSkd.updateAvailability(event.availabilityId, event.start, event.end);
+        },
+        eventResize: function(event) {
+          consultationKitSkd.updateAvailability(event.availabilityId, event.start, event.end);
+        },
         select: function(start, end) {
-          var eventData = {
-            start: start,
-            end: end
-          };
-
-          var args = Object.assign({}, eventData, {
-            'userId': config.userId,
-            'apiToken': config.apiToken
-          });
-
-          consultationKitSkd.createAvailability(args);
-
-          calendarTarget.fullCalendar('renderEvent', eventData, true);
-          calendarTarget.fullCalendar('unselect');
+          consultationKitSkd.createAvailability(start, end)
+              .done(function(availability) {
+                calendarTarget.fullCalendar('renderEvent',
+                    { availabilityId: availability.id, start: start, end: end }, false);
+                calendarTarget.fullCalendar('unselect');
+              });
+        },
+        eventClick: function(e) {
+          console.log(e);
+          confirm('Do you want to delete this availability?');
+        },
+        viewRender: function(view) {
+          var days = view.intervalUnit === 'day' ? 1 : 7;
+          findTime(view.start, days);
         }
       };
     } else {
-      var args = {
+      fullCalendarArgs = {
         defaultView: sizing.view,
         height: sizing.height,
         eventClick: showBookingPage,
@@ -206,16 +217,20 @@ function ConsultationKitBooking() {
           var sizing = decideCalendarSize();
           calendarTarget.fullCalendar('changeView', sizing.view);
           calendarTarget.fullCalendar('option', 'height', sizing.height);
+        },
+        viewRender: function(view) {
+          var days = view.intervalUnit === 'day' ? 1 : 7;
+          findTime(view.start, days);
         }
       };
     }
 
 
-    $.extend(true, args, config.fullCalendar);
+    $.extend(true, fullCalendarArgs, config.fullCalendar);
 
     rootTarget.append(calendarTarget);
 
-    calendarTarget.fullCalendar(args);
+    calendarTarget.fullCalendar(fullCalendarArgs);
     rootTarget.addClass('show');
 
     utils.doCallback('fullCalendarInitialized', config);
@@ -306,7 +321,7 @@ function ConsultationKitBooking() {
       successMessageTitle:  config.localization.strings.successMessageTitle,
       successMessageBody:   interpolate.sprintf(config.localization.strings.successMessageBody, '<span class="booked-email"></span>'),
       fields:               config.bookingFields,
-      meetingCost:          config.meetingCost
+      pricePerMeeting:      config.pricePerMeeting
     }, {
       formFields: fieldsTemplate
     }));
@@ -443,7 +458,7 @@ function ConsultationKitBooking() {
     finalConfig = $.extend(true, {}, presetsConfig, finalConfig);
 
     // Check for required settings
-    if(!finalConfig.apiToken || !finalConfig.calendar) {
+    if(!finalConfig.apiToken || (!finalConfig.calendar && !finalConfig.editCalendar)) {
       utils.logError('A required config setting was missing ("apiToken" or "calendar")');
     }
 
@@ -476,22 +491,19 @@ function ConsultationKitBooking() {
     // Initialize FullCalendar
     initializeCalendar();
 
-    // Get availabilities
-    findTime();
-
     // Show timezone helper if enabled
     if (config.localization.showTimezoneHelper) {
-      renderTimezoneHelper();
+        renderTimezoneHelper();
     }
 
     // Show image avatar if set
     if (config.avatar) {
-      renderAvatarImage();
+        renderAvatarImage();
     }
 
     // Print out display name
     if (config.calendar_name) {
-      renderDisplayName();
+        renderDisplayName();
     }
 
     utils.doCallback('renderCompleted', config);

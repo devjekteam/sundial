@@ -19,16 +19,17 @@
     ============================== -->
 </head>
 <body>
-	<div id="bookingjs">
+	<div id="ck-widget">
 		<script src="https://www.paypalobjects.com/api/checkout.js"></script>
 		<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
 		<script type="text/javascript" src="dist/booking.js"></script>
 		<script type="text/javascript">
 			var widget = new ConsultationKit();
 			widget.init({
-				email: 'sam.j.vitello@gmail.com',
 				apiToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJleHAiOjE0ODkzNjM5NDYwMDB9.vwkPiclA3-GRaQ-96OE0cQ2PE2O1AAsJlE31Iy4rhnw',
-				calendar: 1
+				calendar: 1,
+				editCalendar: true,
+				userId: 3
 			});
 		</script>
 	</div>

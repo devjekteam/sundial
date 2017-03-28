@@ -1,19 +1,17 @@
-// idk if this is how its supposed to work or what
-
 function ConsultationKitSdk() {
   if (!(this instanceof ConsultationKitSdk)) {
     return new ConsultationKitSdk();
   }
 
-  this.userId;
-  this.apiToken;
+  this.userId = null;
+  this.apiToken = '';
   this.baseUrl = 'http://localhost:5000/';
 }
 
 ConsultationKitSdk.prototype.setUser = function(userId, apiToken) {
-  this.userId = userId;
-  this.apiToken = apiToken;
-}
+    this.userId = userId;
+    this.apiToken = apiToken;
+};
 
 ConsultationKitSdk.prototype.createPayment = function(calendarId) {
 
@@ -28,7 +26,7 @@ ConsultationKitSdk.prototype.createPayment = function(calendarId) {
             contentType: "application/json"
         }
     );
-}
+};
 
 ConsultationKitSdk.prototype.createBooking = function(args) {
 
@@ -49,75 +47,69 @@ ConsultationKitSdk.prototype.createBooking = function(args) {
             })
         }
     );
-}
+};
 
 ConsultationKitSdk.prototype.findTime = function(args) {
-  function addToTimes(availabilities, times) {
-    for (var i = 0; i < availabilities.length; i++) {
-      times.push({
-        start: availabilities[i].start_datetime,
-        end: availabilities[i].end_datetime,
-        availabilityId: availabilities[i].availability_id
-      })
+    function addToTimes(availabilities, times) {
+        for (var i = 0; i < availabilities.length; i++) {
+            times.push({
+                start: availabilities[i].start_datetime,
+                end: availabilities[i].end_datetime,
+                availabilityId: availabilities[i].availability_id
+            })
+        }
     }
-  }
 
-  function getAvailabilities(days, times, baseUrl, apiToken) {
-      var now = moment();
-      var end = moment(now).endOf('day');
+    function getAvailabilities(times, baseUrl, apiToken) {
+        var start_of_week = args.start;
+        var end_of_first_day = moment(start_of_week).endOf('day');
 
-      const availabilityPromises = [];
+        var availabilityPromises = [];
+        var shouldSkip = false;
 
-      for (var i = 0; i < days; i++) {
-        var start_time;
+        for (var i = 0; i < args.days; i++) {
+            var start_of_day = moment(start_of_week).add(i, 'day');
 
-        if (i != 0) {
-          start_time = moment(now).startOf('day');
-        } else {
-          start_time = moment(now);
-        }
+            var start_datetime = RFC3339DateString(start_of_day);
+            var end_datetime = RFC3339DateString(moment(end_of_first_day).add(i, 'day'));
 
-        const start_datetime = RFC3339DateString(moment(start_time).add(i, 'day'));
-        const end_datetime = RFC3339DateString(moment(end).add(i, 'day'));
-
-        var url;
-        if (args.editCalendar) {
-          url = baseUrl + 'users/' + args.userId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
-        } else {
-          url = baseUrl + 'calendars/' + args.calendarId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
-        }
-        availabilityPromises.push(
-          $.ajax({'url': url, 'type':'GET',
-                  'headers': {
-                    "authorization": apiToken
-                  },
-                  success: function(result) {
-                    addToTimes(result.availabilities, times)
-                  }
+            if (start_of_day.isBefore(moment()) && !args.editCalendar) {
+                if (start_of_day.isSame(moment(), 'day'))
+                    start_datetime = RFC3339DateString(moment());
+                else
+                    shouldSkip = true;
+            }
+            if (!shouldSkip) {
+                var url;
+                if (args.editCalendar) {
+                    url = baseUrl + 'users/' + args.userId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
+                } else {
+                    url = baseUrl + 'calendars/' + args.calendarId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
                 }
-              )
-            );
-      }
+                availabilityPromises.push(
+                    $.ajax({
+                        'url': url, 'type': 'GET',
+                        'headers': {
+                            "authorization": apiToken
+                        },
+                        success: function (result) {
+                            addToTimes(result.availabilities, times)
+                        }
+                    })
+                );
+            }
+            shouldSkip = false;
+        }
+        return availabilityPromises;
+    }
 
-      return availabilityPromises;
-  }
+    var times = [];
+    const availPromises = getAvailabilities(times, this.baseUrl, this.apiToken);
 
-  var times = [];
-  const availPromises = getAvailabilities(7, times, this.baseUrl, this.apiToken);
-
-  // // jacked up query promise
-  return $.when.apply($, availPromises).then(function() {
+    // // jacked up query promise
+    return $.when.apply($, availPromises).then(function() {
     return {data: times};
-  });
-}
-
-ConsultationKitSdk.prototype.getUserTimezone = function(userId) {
-    return new Promise(function(resolve, reject) {
-        resolve({data :{
-            timezone: 'America/New_York',
-            utc_offset: -4
-        }})
-    })
+    });
 };
 
 ConsultationKitSdk.prototype.getCalendarConfig = function(id) {
@@ -131,15 +123,15 @@ ConsultationKitSdk.prototype.getCalendarConfig = function(id) {
     );
 };
 
-ConsultationKitSdk.prototype.createAvailability = function(args) {
+ConsultationKitSdk.prototype.createAvailability = function(start, end) {
   // length in minutes
-  var length = args.end.diff(args.start) / (60000);
+  var length = end.diff(start) / (60000);
 
   var payload = {
-    user_id: args.userId,
-    start_datetime: RFC3339DateString(args.start),
+    user_id: this.userId,
+    start_datetime: RFC3339DateString(start),
     length_minutes: length
-  }
+  };
 
   return $.ajax({
     url: this.baseUrl + 'availabilities',
@@ -148,10 +140,33 @@ ConsultationKitSdk.prototype.createAvailability = function(args) {
     contentType: 'application/json',
     dataType: "json",
     'headers': {
-      "authorization": args.apiToken
+      "authorization": this.apiToken
     }
   })
-}
+};
+
+ConsultationKitSdk.prototype.updateAvailability = function(availabilityId, startTime, endTime) {
+
+    var start = $.extend(true, {}, startTime);
+    var end = $.extend(true, {}, endTime);
+
+    var payload = {
+        user_id: this.userId,
+        start_datetime: RFC3339DateString(start),
+        end_datetime: RFC3339DateString(end)
+    };
+
+    $.ajax({
+        url: this.baseUrl + 'availabilities/' + availabilityId,
+        type: 'PUT',
+        data: JSON.stringify(payload),
+        contentType: 'application/json',
+        dataType: "json",
+        'headers': {
+            "authorization": this.apiToken
+        }
+    })
+};
 
 
 module.exports = ConsultationKitSdk;

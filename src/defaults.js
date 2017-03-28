@@ -6,10 +6,12 @@
 
 var primary = {
 
-  targetEl: '#bookingjs',
+  targetEl: '#ck-widget',
   name: '',
   calendar_name: '',
   avatar: '',
+  pricePerMeeting: 50,
+  userId: null,
   autoload: true,
   localConfig: false,
   includeStyles: true,
@@ -69,15 +71,6 @@ var primary = {
       locked: false
     }
   },
-  timekitConfig: {
-    app: 'bookingjs'
-  },
-  timekitFindTime: {
-    future: '4 weeks',
-    length: '1 hour'
-  },
-  timekitCreateBooking: { },
-  timekitUpdateBooking: { },
   fullCalendar: {
     header: {
       left: '',

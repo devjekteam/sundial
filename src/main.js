@@ -54,7 +54,7 @@ function ConsultationKitBooking() {
 
     var args = {};
     args['start'] = start;
-    args['days'] = days
+    args['days'] = days;
     args['calendarId'] = config.calendar;
     args['editCalendar'] = config.editCalendar;
     args['userId'] = config.userId;

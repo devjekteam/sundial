@@ -104,7 +104,7 @@ ConsultationKitSdk.prototype.findTime = function(args) {
     }
 
     var times = [];
-    const availPromises = getAvailabilities(times, this.baseUrl, this.apiToken);
+    var availPromises = getAvailabilities(times, this.baseUrl, this.apiToken);
 
     // // jacked up query promise
     return $.when.apply($, availPromises).then(function() {

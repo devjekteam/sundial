@@ -5,7 +5,7 @@ function ConsultationKitSdk() {
 
   this.userId = null;
   this.apiToken = '';
-  this.baseUrl = 'http://localhost:5000/';
+  this.baseUrl = 'http://localhost:5000';
 }
 
 ConsultationKitSdk.prototype.setUser = function(userId, apiToken) {
@@ -15,7 +15,7 @@ ConsultationKitSdk.prototype.setUser = function(userId, apiToken) {
 
 ConsultationKitSdk.prototype.createPayment = function(calendarId) {
 
-    var url = this.baseUrl + 'paypal/auth/payments';
+    var url = this.baseUrl + 'payments';
     return $.ajax({'url': url, 'type':'POST',
             'headers': {
                 "authorization": this.apiToken
@@ -31,7 +31,7 @@ ConsultationKitSdk.prototype.createPayment = function(calendarId) {
 ConsultationKitSdk.prototype.createBooking = function(args) {
 
     console.log('args: ', args);
-    var url = this.baseUrl + 'auth/bookings';
+    var url = this.baseUrl + 'bookings';
     return $.ajax({'url': url, 'type':'POST',
             'headers': {
                 "authorization": this.apiToken

@@ -18452,7 +18452,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	  this.userId = null;
 	  this.apiToken = '';
-	  this.baseUrl = 'http://localhost:5000/';
+	  this.baseUrl = 'https://api-dev.consultationkit.com/';
 	}
 	
 	ConsultationKitSdk.prototype.setUser = function(userId, apiToken) {
@@ -18551,7 +18551,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    }
 	
 	    var times = [];
-	    const availPromises = getAvailabilities(times, this.baseUrl, this.apiToken);
+	    var availPromises = getAvailabilities(times, this.baseUrl, this.apiToken);
 	
 	    // // jacked up query promise
 	    return $.when.apply($, availPromises).then(function() {

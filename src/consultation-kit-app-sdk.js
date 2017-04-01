@@ -1,21 +1,22 @@
 function ConsultationKitSdk() {
-  if (!(this instanceof ConsultationKitSdk)) {
-    return new ConsultationKitSdk();
-  }
+    if (!(this instanceof ConsultationKitSdk)) {
+        return new ConsultationKitSdk();
+    }
 
-  this.userId = null;
-  this.apiToken = '';
-  this.baseUrl = 'http://localhost:5000';
+    this.userId = null;
+    this.apiToken = null;
+    this.baseUrl = 'http://localhost:5000';
 }
 
-ConsultationKitSdk.prototype.setUser = function(userId, apiToken) {
+ConsultationKitSdk.prototype.setUser = function(userId, apiToken, baseUrl) {
     this.userId = userId;
     this.apiToken = apiToken;
+    this.baseUrl = baseUrl
 };
 
 ConsultationKitSdk.prototype.createPayment = function(calendarId) {
 
-    var url = this.baseUrl + 'payments';
+    var url = this.baseUrl + '/payments';
     return $.ajax({'url': url, 'type':'POST',
             'headers': {
                 "authorization": this.apiToken
@@ -31,7 +32,7 @@ ConsultationKitSdk.prototype.createPayment = function(calendarId) {
 ConsultationKitSdk.prototype.createBooking = function(args) {
 
     console.log('args: ', args);
-    var url = this.baseUrl + 'bookings';
+    var url = this.baseUrl + '/bookings';
     return $.ajax({'url': url, 'type':'POST',
             'headers': {
                 "authorization": this.apiToken
@@ -82,9 +83,9 @@ ConsultationKitSdk.prototype.findTime = function(args) {
             if (!shouldSkip) {
                 var url;
                 if (args.editCalendar) {
-                    url = baseUrl + 'users/' + args.userId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
+                    url = baseUrl + '/users/' + args.userId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
                 } else {
-                    url = baseUrl + 'calendars/' + args.calendarId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
+                    url = baseUrl + '/calendars/' + args.calendarId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
                 }
                 availabilityPromises.push(
                     $.ajax({
@@ -113,7 +114,7 @@ ConsultationKitSdk.prototype.findTime = function(args) {
 };
 
 ConsultationKitSdk.prototype.getCalendarConfig = function(id) {
-    var url = this.baseUrl + 'calendars/' + id + '/config';
+    var url = this.baseUrl + '/calendars/' + id + '/config';
     return $.ajax({'url': url, 'type':'GET',
             'headers': {
                 "authorization": this.apiToken
@@ -134,7 +135,7 @@ ConsultationKitSdk.prototype.createAvailability = function(start, end) {
   };
 
   return $.ajax({
-    url: this.baseUrl + 'availabilities',
+    url: this.baseUrl + '/availabilities',
     type: 'POST',
     data: JSON.stringify(payload),
     contentType: 'application/json',
@@ -157,7 +158,7 @@ ConsultationKitSdk.prototype.updateAvailability = function(availabilityId, start
     };
 
     $.ajax({
-        url: this.baseUrl + 'availabilities/' + availabilityId,
+        url: this.baseUrl + '/availabilities/' + availabilityId,
         type: 'PUT',
         data: JSON.stringify(payload),
         contentType: 'application/json',

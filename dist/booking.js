@@ -102,7 +102,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	  // Setup the SDK with correct credentials
 	  var setupConfig = function() {
-	    consultationKitSkd.setUser(config.userId, config.apiToken);
+	    consultationKitSkd.setUser(config.userId, config.apiToken, config.baseUrl);
 	  };
 	
 	  // Fetch availabile time through Consultation Kit SDK
@@ -514,8 +514,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	    finalConfig = $.extend(true, {}, presetsConfig, finalConfig);
 	
 	    // Check for required settings
-	    if(!finalConfig.apiToken || (!finalConfig.calendar && !finalConfig.editCalendar)) {
-	      utils.logError('A required config setting was missing ("apiToken" or "calendar")');
+	    if(!finalConfig.calendar && !finalConfig.editCalendar) {
+	      utils.logError('A required config setting was missing ("calendar")');
 	    }
 	
 	    // Set new config to instance config
@@ -18446,23 +18446,24 @@ return /******/ (function(modules) { // webpackBootstrap
 /***/ function(module, exports) {
 
 	function ConsultationKitSdk() {
-	  if (!(this instanceof ConsultationKitSdk)) {
-	    return new ConsultationKitSdk();
-	  }
+	    if (!(this instanceof ConsultationKitSdk)) {
+	        return new ConsultationKitSdk();
+	    }
 	
-	  this.userId = null;
-	  this.apiToken = '';
-	  this.baseUrl = 'http://localhost:5000/';
+	    this.userId = null;
+	    this.apiToken = null;
+	    this.baseUrl = 'http://localhost:5000';
 	}
 	
-	ConsultationKitSdk.prototype.setUser = function(userId, apiToken) {
+	ConsultationKitSdk.prototype.setUser = function(userId, apiToken, baseUrl) {
 	    this.userId = userId;
 	    this.apiToken = apiToken;
+	    this.baseUrl = baseUrl
 	};
 	
 	ConsultationKitSdk.prototype.createPayment = function(calendarId) {
 	
-	    var url = this.baseUrl + 'paypal/auth/payments';
+	    var url = this.baseUrl + '/payments';
 	    return $.ajax({'url': url, 'type':'POST',
 	            'headers': {
 	                "authorization": this.apiToken
@@ -18478,7 +18479,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	ConsultationKitSdk.prototype.createBooking = function(args) {
 	
 	    console.log('args: ', args);
-	    var url = this.baseUrl + 'auth/bookings';
+	    var url = this.baseUrl + '/bookings';
 	    return $.ajax({'url': url, 'type':'POST',
 	            'headers': {
 	                "authorization": this.apiToken
@@ -18529,9 +18530,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	            if (!shouldSkip) {
 	                var url;
 	                if (args.editCalendar) {
-	                    url = baseUrl + 'users/' + args.userId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
+	                    url = baseUrl + '/users/' + args.userId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
 	                } else {
-	                    url = baseUrl + 'calendars/' + args.calendarId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
+	                    url = baseUrl + '/calendars/' + args.calendarId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
 	                }
 	                availabilityPromises.push(
 	                    $.ajax({
@@ -18551,7 +18552,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    }
 	
 	    var times = [];
-	    const availPromises = getAvailabilities(times, this.baseUrl, this.apiToken);
+	    var availPromises = getAvailabilities(times, this.baseUrl, this.apiToken);
 	
 	    // // jacked up query promise
 	    return $.when.apply($, availPromises).then(function() {
@@ -18560,7 +18561,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 	
 	ConsultationKitSdk.prototype.getCalendarConfig = function(id) {
-	    var url = this.baseUrl + 'calendars/' + id + '/config';
+	    var url = this.baseUrl + '/calendars/' + id + '/config';
 	    return $.ajax({'url': url, 'type':'GET',
 	            'headers': {
 	                "authorization": this.apiToken
@@ -18581,7 +18582,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  };
 	
 	  return $.ajax({
-	    url: this.baseUrl + 'availabilities',
+	    url: this.baseUrl + '/availabilities',
 	    type: 'POST',
 	    data: JSON.stringify(payload),
 	    contentType: 'application/json',
@@ -18604,7 +18605,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    };
 	
 	    $.ajax({
-	        url: this.baseUrl + 'availabilities/' + availabilityId,
+	        url: this.baseUrl + '/availabilities/' + availabilityId,
 	        type: 'PUT',
 	        data: JSON.stringify(payload),
 	        contentType: 'application/json',
@@ -20140,6 +20141,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	var primary = {
 	
 	  targetEl: '#ck-widget',
+	  baseUrl: 'http://api.consultationkit.com',
+	  apiToken: null,
 	  name: '',
 	  calendar_name: '',
 	  avatar: '',

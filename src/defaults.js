@@ -7,6 +7,8 @@
 var primary = {
 
   targetEl: '#ck-widget',
+  baseUrl: 'http://api.consultationkit.com',
+  apiToken: null,
   name: '',
   calendar_name: '',
   avatar: '',

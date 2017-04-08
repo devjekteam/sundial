@@ -46,7 +46,7 @@ function ConsultationKitBooking() {
 
   // Setup the SDK with correct credentials
   var setupConfig = function() {
-    consultationKitSkd.setUser(config.userId, config.apiToken);
+    consultationKitSkd.setUser(config.userId, config.apiToken, config.baseUrl);
   };
 
   // Fetch availabile time through Consultation Kit SDK
@@ -458,8 +458,8 @@ function ConsultationKitBooking() {
     finalConfig = $.extend(true, {}, presetsConfig, finalConfig);
 
     // Check for required settings
-    if(!finalConfig.apiToken || (!finalConfig.calendar && !finalConfig.editCalendar)) {
-      utils.logError('A required config setting was missing ("apiToken" or "calendar")');
+    if(!finalConfig.calendar && !finalConfig.editCalendar) {
+      utils.logError('A required config setting was missing ("calendar")');
     }
 
     // Set new config to instance config

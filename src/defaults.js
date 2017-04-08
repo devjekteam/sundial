@@ -14,6 +14,7 @@ var primary = {
   avatar: '',
   pricePerMeeting: 50,
   userId: null,
+  calendar: null,
   autoload: true,
   localConfig: false,
   includeStyles: true,

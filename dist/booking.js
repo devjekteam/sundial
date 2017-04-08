@@ -102,7 +102,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	  // Setup the SDK with correct credentials
 	  var setupConfig = function() {
-	    consultationKitSkd.setUser(config.userId, config.apiToken, config.baseUrl);
+	    consultationKitSkd.setup(config.userId, config.apiToken, config.baseUrl, config.calendar);
 	  };
 	
 	  // Fetch availabile time through Consultation Kit SDK
@@ -111,7 +111,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	    var args = {};
 	    args['start'] = start;
 	    args['days'] = days;
-	    args['calendarId'] = config.calendar;
 	    args['editCalendar'] = config.editCalendar;
 	    args['userId'] = config.userId;
 	
@@ -203,9 +202,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	    rootTarget.addClass('has-timezonehelper');
 	    rootTarget.append(timezoneHelperTarget);
 	
-	    var calendarTimezone = config.timezone;
+	    var hostTzOffset = (moment().tz(config.timezone).utcOffset()/60) || -7;
 	
-	    var hostTzOffset = calendarTimezone.utc_offset || -7;
 	    var tzOffsetDiff = localTzOffset - hostTzOffset;
 	    var tzOffsetDiffAbs = Math.abs(localTzOffset - hostTzOffset);
 	    var tzDirection = (tzOffsetDiff > 0 ? 'ahead' : 'behind');
@@ -420,7 +418,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	        if (hasErrors) return reject('All fields are required');
 	
-	        consultationKitSkd.createPayment(config.calendar)
+	        consultationKitSkd.createPayment()
 	            .done(function(data) {
 	              resolve(data.payment_id);
 	            })
@@ -440,7 +438,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	        var bookingArgs = {
 	          start_datetime: moment(eventData.start).format(),
 	          end_datetime: moment(eventData.end).format(),
-	          calendar_id: config.calendar,
 	          payment_id: data.paymentID,
 	          payer_id: data.payerID,
 	          client: client
@@ -18452,16 +18449,18 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	    this.userId = null;
 	    this.apiToken = null;
-	    this.baseUrl = 'http://localhost:5000';
+	    this.baseUrl = null;
+	    this.calendarId = null;
 	}
 	
-	ConsultationKitSdk.prototype.setUser = function(userId, apiToken, baseUrl) {
+	ConsultationKitSdk.prototype.setup = function(userId, apiToken, baseUrl, calendarId) {
 	    this.userId = userId;
 	    this.apiToken = apiToken;
-	    this.baseUrl = baseUrl
+	    this.baseUrl = baseUrl;
+	    this.calendarId = calendarId;
 	};
 	
-	ConsultationKitSdk.prototype.createPayment = function(calendarId) {
+	ConsultationKitSdk.prototype.createPayment = function() {
 	
 	    var url = this.baseUrl + '/payments';
 	    return $.ajax({'url': url, 'type':'POST',
@@ -18469,7 +18468,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	                "authorization": this.apiToken
 	            },
 	            data: JSON.stringify({
-	                calendar_id: calendarId
+	                calendar_id: this.calendarId
 	            }),
 	            contentType: "application/json"
 	        }
@@ -18478,7 +18477,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	ConsultationKitSdk.prototype.createBooking = function(args) {
 	
-	    console.log('args: ', args);
 	    var url = this.baseUrl + '/bookings';
 	    return $.ajax({'url': url, 'type':'POST',
 	            'headers': {
@@ -18488,7 +18486,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	            data: JSON.stringify({
 	                start_datetime: args.start_datetime,
 	                end_datetime: args.end_datetime,
-	                calendar_id: args.calendar_id,
+	                calendar_id: this.calendarId,
 	                payment_id: args.payment_id,
 	                payer_id: args.payer_id,
 	                client: args.client
@@ -18508,7 +18506,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        }
 	    }
 	
-	    function getAvailabilities(times, baseUrl, apiToken) {
+	    function getAvailabilities(times, baseUrl, apiToken, calendarId) {
 	        var start_of_week = args.start;
 	        var end_of_first_day = moment(start_of_week).endOf('day');
 	
@@ -18532,7 +18530,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	                if (args.editCalendar) {
 	                    url = baseUrl + '/users/' + args.userId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
 	                } else {
-	                    url = baseUrl + '/calendars/' + args.calendarId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
+	                    url = baseUrl + '/calendars/' + calendarId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
 	                }
 	                availabilityPromises.push(
 	                    $.ajax({
@@ -18552,7 +18550,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    }
 	
 	    var times = [];
-	    var availPromises = getAvailabilities(times, this.baseUrl, this.apiToken);
+	    var availPromises = getAvailabilities(times, this.baseUrl, this.apiToken, this.calendarId);
 	
 	    // // jacked up query promise
 	    return $.when.apply($, availPromises).then(function() {
@@ -18560,8 +18558,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	    });
 	};
 	
-	ConsultationKitSdk.prototype.getCalendarConfig = function(id) {
-	    var url = this.baseUrl + '/calendars/' + id + '/config';
+	ConsultationKitSdk.prototype.getCalendarConfig = function() {
+	    var url = this.baseUrl + '/calendars/' + this.calendarId + '/config';
 	    return $.ajax({'url': url, 'type':'GET',
 	            'headers': {
 	                "authorization": this.apiToken
@@ -18576,9 +18574,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	  var length = end.diff(start) / (60000);
 	
 	  var payload = {
-	    user_id: this.userId,
 	    start_datetime: RFC3339DateString(start),
-	    length_minutes: length
+	    length_minutes: length,
+	    calendar_id: this.calendarId
 	  };
 	
 	  return $.ajax({
@@ -20148,6 +20146,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  avatar: '',
 	  pricePerMeeting: 50,
 	  userId: null,
+	  calendar: null,
 	  autoload: true,
 	  localConfig: false,
 	  includeStyles: true,

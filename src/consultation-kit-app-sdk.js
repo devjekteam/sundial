@@ -5,16 +5,18 @@ function ConsultationKitSdk() {
 
     this.userId = null;
     this.apiToken = null;
-    this.baseUrl = 'http://localhost:5000';
+    this.baseUrl = null;
+    this.calendarId = null;
 }
 
-ConsultationKitSdk.prototype.setUser = function(userId, apiToken, baseUrl) {
+ConsultationKitSdk.prototype.setup = function(userId, apiToken, baseUrl, calendarId) {
     this.userId = userId;
     this.apiToken = apiToken;
-    this.baseUrl = baseUrl
+    this.baseUrl = baseUrl;
+    this.calendarId = calendarId;
 };
 
-ConsultationKitSdk.prototype.createPayment = function(calendarId) {
+ConsultationKitSdk.prototype.createPayment = function() {
 
     var url = this.baseUrl + '/payments';
     return $.ajax({'url': url, 'type':'POST',
@@ -22,7 +24,7 @@ ConsultationKitSdk.prototype.createPayment = function(calendarId) {
                 "authorization": this.apiToken
             },
             data: JSON.stringify({
-                calendar_id: calendarId
+                calendar_id: this.calendarId
             }),
             contentType: "application/json"
         }
@@ -31,7 +33,6 @@ ConsultationKitSdk.prototype.createPayment = function(calendarId) {
 
 ConsultationKitSdk.prototype.createBooking = function(args) {
 
-    console.log('args: ', args);
     var url = this.baseUrl + '/bookings';
     return $.ajax({'url': url, 'type':'POST',
             'headers': {
@@ -41,7 +42,7 @@ ConsultationKitSdk.prototype.createBooking = function(args) {
             data: JSON.stringify({
                 start_datetime: args.start_datetime,
                 end_datetime: args.end_datetime,
-                calendar_id: args.calendar_id,
+                calendar_id: this.calendarId,
                 payment_id: args.payment_id,
                 payer_id: args.payer_id,
                 client: args.client
@@ -61,7 +62,7 @@ ConsultationKitSdk.prototype.findTime = function(args) {
         }
     }
 
-    function getAvailabilities(times, baseUrl, apiToken) {
+    function getAvailabilities(times, baseUrl, apiToken, calendarId) {
         var start_of_week = args.start;
         var end_of_first_day = moment(start_of_week).endOf('day');
 
@@ -85,7 +86,7 @@ ConsultationKitSdk.prototype.findTime = function(args) {
                 if (args.editCalendar) {
                     url = baseUrl + '/users/' + args.userId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
                 } else {
-                    url = baseUrl + '/calendars/' + args.calendarId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
+                    url = baseUrl + '/calendars/' + calendarId + '/availabilities?start_datetime=' + start_datetime + '&end_datetime=' + end_datetime;
                 }
                 availabilityPromises.push(
                     $.ajax({
@@ -105,7 +106,7 @@ ConsultationKitSdk.prototype.findTime = function(args) {
     }
 
     var times = [];
-    var availPromises = getAvailabilities(times, this.baseUrl, this.apiToken);
+    var availPromises = getAvailabilities(times, this.baseUrl, this.apiToken, this.calendarId);
 
     // // jacked up query promise
     return $.when.apply($, availPromises).then(function() {
@@ -113,8 +114,8 @@ ConsultationKitSdk.prototype.findTime = function(args) {
     });
 };
 
-ConsultationKitSdk.prototype.getCalendarConfig = function(id) {
-    var url = this.baseUrl + '/calendars/' + id + '/config';
+ConsultationKitSdk.prototype.getCalendarConfig = function() {
+    var url = this.baseUrl + '/calendars/' + this.calendarId + '/config';
     return $.ajax({'url': url, 'type':'GET',
             'headers': {
                 "authorization": this.apiToken
@@ -129,9 +130,9 @@ ConsultationKitSdk.prototype.createAvailability = function(start, end) {
   var length = end.diff(start) / (60000);
 
   var payload = {
-    user_id: this.userId,
     start_datetime: RFC3339DateString(start),
-    length_minutes: length
+    length_minutes: length,
+    calendar_id: this.calendarId
   };
 
   return $.ajax({

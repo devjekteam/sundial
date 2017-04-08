@@ -46,7 +46,7 @@ function ConsultationKitBooking() {
 
   // Setup the SDK with correct credentials
   var setupConfig = function() {
-    consultationKitSkd.setUser(config.userId, config.apiToken, config.baseUrl);
+    consultationKitSkd.setup(config.userId, config.apiToken, config.baseUrl, config.calendar);
   };
 
   // Fetch availabile time through Consultation Kit SDK
@@ -55,7 +55,6 @@ function ConsultationKitBooking() {
     var args = {};
     args['start'] = start;
     args['days'] = days;
-    args['calendarId'] = config.calendar;
     args['editCalendar'] = config.editCalendar;
     args['userId'] = config.userId;
 
@@ -147,9 +146,8 @@ function ConsultationKitBooking() {
     rootTarget.addClass('has-timezonehelper');
     rootTarget.append(timezoneHelperTarget);
 
-    var calendarTimezone = config.timezone;
+    var hostTzOffset = (moment().tz(config.timezone).utcOffset()/60) || -7;
 
-    var hostTzOffset = calendarTimezone.utc_offset || -7;
     var tzOffsetDiff = localTzOffset - hostTzOffset;
     var tzOffsetDiffAbs = Math.abs(localTzOffset - hostTzOffset);
     var tzDirection = (tzOffsetDiff > 0 ? 'ahead' : 'behind');
@@ -364,7 +362,7 @@ function ConsultationKitBooking() {
 
         if (hasErrors) return reject('All fields are required');
 
-        consultationKitSkd.createPayment(config.calendar)
+        consultationKitSkd.createPayment()
             .done(function(data) {
               resolve(data.payment_id);
             })
@@ -384,7 +382,6 @@ function ConsultationKitBooking() {
         var bookingArgs = {
           start_datetime: moment(eventData.start).format(),
           end_datetime: moment(eventData.end).format(),
-          calendar_id: config.calendar,
           payment_id: data.paymentID,
           payer_id: data.payerID,
           client: client

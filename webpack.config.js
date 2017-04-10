@@ -7,7 +7,7 @@ module.exports = {
     devtool: 'source-map',
     output: {
         path: './dist',
-        filename: 'booking.js',
+        filename: 'widget.js',
         libraryTarget: 'umd',
         library: 'ConsultationKit'
     },

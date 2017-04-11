@@ -74,7 +74,7 @@ function ConsultationKitBooking() {
             // Go to first event if enabled
             if (config.goToFirstEvent && response.data.length > 0) {
               var firstEventStart = response.data[0].start;
-              var firstEventStartHour = moment(firstEventStart).format('H');
+              var firstEventStartHour = moment(firstEventStart).format('hh:00:00');
               goToDate(firstEventStart);
               scrollToTime(firstEventStartHour);
             }
@@ -91,25 +91,15 @@ function ConsultationKitBooking() {
 
   // Scrolls fullcalendar to the specified hour
   var scrollToTime = function(time) {
+    var scroll_to_row = $("tr").find("[data-time='"+time+"']");
 
     // Only proceed for agendaWeek view
     if (calendarTarget.fullCalendar('getView').name !== 'agendaWeek'){
       return;
     }
 
-    // Get height of each hour row
-    var hours = calendarTarget.find('.fc-slats .fc-minor');
-    var hourHeight = $(hours[0]).height() * 2;
-
-    // If minTime is set in fullCalendar config, subtract that from the scollTo calculationn
-    var minTimeHeight = 0;
-    if (config.fullCalendar.minTime) {
-      var minTime = moment(config.fullCalendar.minTime, 'HH:mm:ss').format('H');
-      minTimeHeight = hourHeight * minTime;
-    }
-
     // Calculate scrolling location and container sizes
-    var scrollTo = (hourHeight * time) - minTimeHeight;
+    var scrollTo = scroll_to_row.position().top;
     var scrollable = calendarTarget.find('.fc-scroller');
     var scrollableHeight = scrollable.height();
     var scrollableScrollTop = scrollable.scrollTop();

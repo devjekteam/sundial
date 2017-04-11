@@ -114,8 +114,8 @@ ConsultationKitSdk.prototype.findTime = function(args) {
     });
 };
 
-ConsultationKitSdk.prototype.getCalendarConfig = function() {
-    var url = this.baseUrl + '/calendars/' + this.calendarId + '/config';
+ConsultationKitSdk.prototype.getCalendarConfig = function(calendar) {
+    var url = this.baseUrl + '/calendars/' + calendar + '/config';
     return $.ajax({'url': url, 'type':'GET',
             'headers': {
                 "authorization": this.apiToken

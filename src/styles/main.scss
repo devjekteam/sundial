@@ -11,6 +11,8 @@
 // Colors
 
 $bgColor:           #f5f7f9;
+$bgDarkColor:       darken($bgColor, 10%);
+$bgDarkerColor:     darken($bgColor, 20%);
 $borderColor:       #ececec;
 $textColor:         #666;
 $textLightColor:    #AEAEAE;
@@ -138,6 +140,98 @@ $fontFamily:        'Roboto', Helvetica, Tahoma, Arial, sans-serif;
     }
   }
 
+  // Confirm Delete page
+  &-confirm-delete-backdrop {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background: rgba(0, 0, 0, 0.1);
+    z-index: 30;
+  }
+  &-confirm-delete {
+    position: absolute;
+    width: 300px;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background-color: white;
+    z-index: 30;
+    transition: opacity 0.2s ease;
+    border-left: 2px solid $borderColor;
+
+    &.show {
+      opacity: 1;
+    }
+
+    &-close {
+      position: absolute;
+      top: 0;
+      right: 0;
+      padding: 18px;
+      transition: opacity 0.2s ease;
+      opacity: 0.3;
+      z-index: 9;
+
+      &:hover {
+        opacity: 1;
+      }
+    }
+
+    &-container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 30px;
+      text-align: center;
+
+      &-prompt {
+        font-size: 20px;
+        font-weight: 300;
+      }
+
+      &-day {
+        text-align: center;
+        font-size: 24px;
+        font-weight: 300;
+        margin: 0;
+        padding-bottom: 8px;
+        letter-spacing: .5px;
+        color: $primaryColor;
+      }
+
+      &-time {
+        text-align: center;
+        font-size: 17px;
+        font-weight: 200;
+        margin: 0 0 20px;
+        letter-spacing: .5px;
+      }
+
+      &-button {
+        background: $primaryColor;
+        border-radius: 4px;
+        color: #fff;
+        padding: 12px 40px;
+        margin: 0 4px;
+        border: none;
+        cursor: pointer;
+
+        &:hover {
+          background: $primaryDarkColor;
+        }
+
+        &.no {
+          background: $bgDarkColor;
+          color: $textColor;
+
+          &:hover {
+            background: $bgDarkerColor;
+          }
+        }
+      }
+    }
+  }
   // Book page
 
   &-bookpage {

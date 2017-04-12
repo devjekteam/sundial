@@ -57,14 +57,14 @@ var primary = {
       enabled: false,
       placeholder: 'Phone number',
       prefilled: false,
-      required: false,
+      //required: false,
       locked: false
     },
-    voip: {
+    skype: {
       enabled: false,
       placeholder: 'Skype username',
       prefilled: false,
-      required: false,
+      //required: false,
       locked: false
     },
     location: {
@@ -119,7 +119,8 @@ var bookingInstant = {
   },
   localization: {
     strings: {
-      successMessageBody: '<p>An invitation has been sent to: %s </p><p>Please accept the invitation to confirm the booking.</p>'
+      successMessageBody: '<p>A confirmation has been sent to: %s </p>' +
+      '<p>Instructions on how to join the meeting will be sent to you before it starts.</p>'
     }
   }
 

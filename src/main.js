@@ -75,7 +75,7 @@ function ConsultationKitBooking() {
             // Go to first event if enabled
             if (config.goToFirstEvent && response.data.length > 0) {
               var firstEventStart = response.data[0].start;
-              var firstEventStartHour = moment(firstEventStart).format('hh:00:00');
+              var firstEventStartHour = moment(firstEventStart).format('HH:00:00');
               goToDate(firstEventStart);
               scrollToTime(firstEventStartHour);
             }
@@ -240,7 +240,7 @@ function ConsultationKitBooking() {
 
     if (config.bookingFields.comment.enabled) {  height += 84; }
     if (config.bookingFields.phone.enabled) {    height += 64; }
-    if (config.bookingFields.voip.enabled) {     height += 64; }
+    if (config.bookingFields.skype.enabled) {     height += 64; }
     if (config.bookingFields.location.enabled) { height += 64; }
 
     return {

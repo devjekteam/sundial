@@ -182,14 +182,15 @@ function ConsultationKitBooking() {
         select: function(start, end) {
           consultationKitSkd.createAvailability(start, end)
               .done(function(availability) {
-                calendarTarget.fullCalendar('renderEvent',
-                    { availabilityId: availability.id, start: start, end: end }, false);
+                calendarTarget.fullCalendar('renderEvent', { availabilityId: availability.id, start: start, end: end }, false);
                 calendarTarget.fullCalendar('unselect');
               });
         },
-        eventClick: function(e) {
-          console.log(e);
-          confirm('Do you want to delete this availability?');
+        eventClick: function(event) {
+          consultationKitSkd.deleteAvailability(event.availabilityId)
+            .done(function() {
+              calendarTarget.fullCalendar('removeEvents', event._id);
+            });
         },
         viewRender: function(view) {
           var days = view.intervalUnit === 'day' ? 1 : 7;
@@ -383,6 +384,8 @@ function ConsultationKitBooking() {
               $(".bookingjs-form-fields").hide();
               $(".bookingjs-form-success-message .booked-email").text(bookingArgs.client.email);
               $(".bookingjs-form-success-message").show();
+              // remove event from the calendar so user isn't confused
+              calendarTarget.fullCalendar('removeEvents', eventData._id);
             })
             .fail(function(err) {
                 console.log('error: ', err)
@@ -504,7 +507,7 @@ function ConsultationKitBooking() {
 
         // Start from local config
         if (suppliedConfig.localConfig) {
-          return start(suppliedConfig)
+          return start(suppliedConfig);
         }
 
         // Load remote config

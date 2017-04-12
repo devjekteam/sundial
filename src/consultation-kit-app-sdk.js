@@ -158,7 +158,7 @@ ConsultationKitSdk.prototype.updateAvailability = function(availabilityId, start
         end_datetime: RFC3339DateString(end)
     };
 
-    $.ajax({
+    return $.ajax({
         url: this.baseUrl + '/availabilities/' + availabilityId,
         type: 'PUT',
         data: JSON.stringify(payload),
@@ -168,6 +168,19 @@ ConsultationKitSdk.prototype.updateAvailability = function(availabilityId, start
             "authorization": this.apiToken
         }
     })
+};
+
+ConsultationKitSdk.prototype.deleteAvailability = function(availabilityId) {
+
+  return $.ajax({
+    url: this.baseUrl + '/availabilities/' + availabilityId,
+    type: 'DELETE',
+    contentType: 'application/json',
+    dataType: "json",
+    'headers': {
+      "authorization": this.apiToken
+    }
+  })
 };
 
 

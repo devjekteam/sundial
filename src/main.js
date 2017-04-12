@@ -21,6 +21,7 @@ function ConsultationKitBooking() {
   var rootTarget;
   var calendarTarget;
   var bookingPageTarget;
+  var confirmDeleteTarget;
 
   var times_loaded = [];
 
@@ -186,12 +187,7 @@ function ConsultationKitBooking() {
                 calendarTarget.fullCalendar('unselect');
               });
         },
-        eventClick: function(event) {
-          consultationKitSkd.deleteAvailability(event.availabilityId)
-            .done(function() {
-              calendarTarget.fullCalendar('removeEvents', event._id);
-            });
-        },
+        eventClick: showConfirmDeletePage,
         viewRender: function(view) {
           var days = view.intervalUnit === 'day' ? 1 : 7;
           findTime(view.start, days);
@@ -408,6 +404,59 @@ function ConsultationKitBooking() {
 
     setTimeout(function(){
       bookingPageTarget.remove();
+    }, 200);
+
+    $(document).off('keyup');
+
+  };
+
+  var showConfirmDeletePage = function(eventData) {
+
+    var template = require('./templates/confirm-delete.html');
+    var timeFormat = config.localization.bookingTimeFormat || moment.localeData().longDateFormat('LT');
+
+    confirmDeleteTarget = $(template.render({
+      chosenDate:           moment(eventData.start).format('dddd'),
+      chosenTime:           moment(eventData.start).format(timeFormat) + ' - ' + moment(eventData.end).format(timeFormat),
+      closeIcon:            require('!svg-inline!./assets/close-icon.svg'),
+
+    }));
+
+    confirmDeleteTarget.find('.bookingjs-confirm-delete-close').click(function(e) {
+      e.preventDefault();
+      hideConfirmDeletePage();
+    });
+
+    confirmDeleteTarget.find('.bookingjs-confirm-delete-container-button').click(function(e) {
+      e.preventDefault();
+      if($(this).hasClass('yes')) {
+        consultationKitSkd.deleteAvailability(eventData.availabilityId)
+          .done(function() {
+            calendarTarget.fullCalendar('removeEvents', eventData._id);
+          });
+      }
+      hideConfirmDeletePage();
+    });
+
+    $(document).on('keyup', function(e) {
+      // escape key maps to keycode `27`
+      if (e.keyCode === 27) { hideConfirmDeletePage(); }
+    });
+
+    rootTarget.append(confirmDeleteTarget);
+
+    setTimeout(function(){
+      confirmDeleteTarget.addClass('show');
+    }, 100);
+
+  };
+
+  var hideConfirmDeletePage = function() {
+
+    confirmDeleteTarget.removeClass('show');
+
+    setTimeout(function(){
+      confirmDeleteTarget.remove();
     }, 200);
 
     $(document).off('keyup');

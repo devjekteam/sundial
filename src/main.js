@@ -197,7 +197,7 @@ function ConsultationKitBooking() {
       fullCalendarArgs = {
         defaultView: sizing.view,
         height: sizing.height,
-        eventClick: loadPaypalandShowBookingPage,
+        eventClick: showBookingPage,
         windowResize: function() {
           var sizing = decideCalendarSize();
           calendarTarget.fullCalendar('changeView', sizing.view);
@@ -286,17 +286,17 @@ function ConsultationKitBooking() {
 
   };
 
-  var loadPaypalandShowBookingPage = function(eventData) {
+  var loadPaypal= function(cb) {
     if (!window.paypal) {
       $.getScript("https://www.paypalobjects.com/api/checkout.js")
         .done(function (script, textStatus) {
-          showBookingPage(eventData);
+          cb();
         })
         .fail(function (jqxhr, settings, exception) {
           console.log('Couldn\'t load PayPal library');
         });
     } else {
-      showBookingPage(eventData);
+      cb();
     }
   };
 
@@ -338,56 +338,58 @@ function ConsultationKitBooking() {
         rootTarget.append(bookingPageTarget);
 
         var form = $("#ck-form");
-        window.paypal.Button.render({
-          env: 'sandbox', // Specify 'sandbox' for the test environment
-          style: {
-            size: 'medium',
-            color: 'blue',
-            shape: 'pill'
-          },
-          payment: function(resolve, reject) {
-            var formDataArr = form.serializeArray();
+        console.log(config.paypalEnv);
+        loadPaypal(function() {
+          window.paypal.Button.render({
+            env: config.paypalEnv, // Specify 'sandbox' for the test environment
+            style: {
+              size: 'medium',
+              color: 'blue',
+              shape: 'pill'
+            },
+            payment: function(resolve, reject) {
+              var formDataArr = form.serializeArray();
 
-            $('.bookingjs-form-input').removeClass('bookingjs-error');
-            $('.bookingjs-error').text('');
-            var client = {};
-            var hasErrors = false;
-            $.each(formDataArr, function(i, prop) {
-              client[prop.name] = prop.value;
-              if (prop.value === '') {
-                $('#'+prop.name + '-error').text('This field is required!');
-                $('#bookingjs-' + prop.name).addClass('bookingjs-error');
-                hasErrors = true;
-              }
-            });
+              $('.bookingjs-form-input').removeClass('bookingjs-error');
+              $('.bookingjs-error').text('');
+              var client = {};
+              var hasErrors = false;
+              $.each(formDataArr, function(i, prop) {
+                client[prop.name] = prop.value;
+                if (prop.value === '') {
+                  $('#'+prop.name + '-error').text('This field is required!');
+                  $('#bookingjs-' + prop.name).addClass('bookingjs-error');
+                  hasErrors = true;
+                }
+              });
 
-            if (hasErrors) return reject('All fields are required');
+              if (hasErrors) return reject('All fields are required');
 
-            consultationKitSkd.createPayment()
+              consultationKitSkd.createPayment()
                 .done(function(data) {
                   resolve(data.payment_id);
                 })
                 .fail(function(err) {
                   reject(err.statusText);
                 })
-          },
+            },
 
-          onAuthorize: function(data) {
+            onAuthorize: function(data) {
 
-            var formDataArr = form.serializeArray();
-            var client = {};
-            $.each(formDataArr, function(i, prop) {
+              var formDataArr = form.serializeArray();
+              var client = {};
+              $.each(formDataArr, function(i, prop) {
                 client[prop.name] = prop.value;
-            });
+              });
 
-            var bookingArgs = {
-              start_datetime: moment(eventData.start).format(),
-              end_datetime: moment(eventData.end).format(),
-              payment_id: data.paymentID,
-              payer_id: data.payerID,
-              client: client
-            };
-            consultationKitSkd.createBooking(bookingArgs)
+              var bookingArgs = {
+                start_datetime: moment(eventData.start).format(),
+                end_datetime: moment(eventData.end).format(),
+                payment_id: data.paymentID,
+                payer_id: data.payerID,
+                client: client
+              };
+              consultationKitSkd.createBooking(bookingArgs)
                 .done(function() {
                   $("#paypal-button").hide();
                   $("#booking-page-title").text('Booking Complete!');
@@ -398,10 +400,11 @@ function ConsultationKitBooking() {
                   calendarTarget.fullCalendar('removeEvents', eventData._id);
                 })
                 .fail(function(err) {
-                    console.log('error: ', err)
+                  console.log('error: ', err)
                 })
-          }
-        }, '#paypal-button');
+            }
+          }, '#paypal-button');
+        });
 
         setTimeout(function(){
           bookingPageTarget.addClass('show');

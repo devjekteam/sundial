@@ -287,7 +287,7 @@ function ConsultationKitBooking() {
   };
 
   var loadPaypal= function(cb) {
-    if (!window.paypal) {
+    if (!window.paypal || !window.paypal.Button) {
       $.getScript("https://www.paypalobjects.com/api/checkout.js")
         .done(function (script, textStatus) {
           cb();

@@ -16,6 +16,7 @@ var primary = {
   userId: null,
   calendar: null, // calendar uuid
   calendarId: null,
+  paypalEnv: 'production',
   autoload: true,
   localConfig: false,
   includeStyles: true,

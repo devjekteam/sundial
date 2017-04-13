@@ -52,7 +52,7 @@ function ConsultationKitBooking() {
   };
 
   // Fetch availabile time through Consultation Kit SDK
-  var findTime = function(start, days) {
+  var findTime = function(start, days, cb) {
 
     var args = {};
     args['start'] = start;
@@ -62,7 +62,6 @@ function ConsultationKitBooking() {
 
     utils.doCallback('findTimeStarted', config, args);
 
-    if (times_loaded.indexOf(start.toISOString()) === -1 && shouldLoad) {
       shouldLoad = false;
       consultationKitSkd.findTime(args)
           .then(function (response) {
@@ -72,17 +71,17 @@ function ConsultationKitBooking() {
             utils.doCallback('findTimeSuccessful', config, response);
 
             // Render available timeslots in FullCalendar
-            renderCalendarEvents(response.data);
+            cb(response.data);
 
             // Go to first event if enabled
             if (config.goToFirstEvent && response.data.length > 0) {
               var firstEventStart = response.data[0].start;
               var firstEventStartHour = moment(firstEventStart).format('HH:00:00');
-              goToDate(firstEventStart);
-              scrollToTime(firstEventStartHour);
+              //goToDate(firstEventStart);
+              //scrollToTime(firstEventStartHour);
             }
           });
-    }
+
   };
 
   // Tells FullCalendar to go to a specifc date
@@ -193,7 +192,7 @@ function ConsultationKitBooking() {
         viewRender: function(view) {
           var days = view.intervalUnit === 'day' ? 1 : 7;
           findTime(view.start, days);
-        }
+        },
       };
     } else {
       fullCalendarArgs = {
@@ -205,9 +204,13 @@ function ConsultationKitBooking() {
           calendarTarget.fullCalendar('changeView', sizing.view);
           calendarTarget.fullCalendar('option', 'height', sizing.height);
         },
-        viewRender: function(view) {
-          var days = view.intervalUnit === 'day' ? 1 : 7;
-          findTime(view.start, days);
+        // viewRender: function(view) {
+        //   var days = view.intervalUnit === 'day' ? 1 : 7;
+        //   findTime(view.start, days);
+        // }
+        events: function( start, end, timezone, callback ) {
+          var days = end.diff(start, 'days');
+          findTime(start, days, callback);
         }
       };
     }

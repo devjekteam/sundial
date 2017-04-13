@@ -24,6 +24,7 @@ function ConsultationKitBooking() {
   var confirmDeleteTarget;
 
   var times_loaded = [];
+  var shouldLoad = true;
 
   // Inject style dependencies
   var includeStyles = function() {
@@ -61,10 +62,11 @@ function ConsultationKitBooking() {
 
     utils.doCallback('findTimeStarted', config, args);
 
-    if (times_loaded.indexOf(start.toISOString()) === -1) {
+    if (times_loaded.indexOf(start.toISOString()) === -1 && shouldLoad) {
+      shouldLoad = false;
       consultationKitSkd.findTime(args)
           .then(function (response) {
-
+            shouldLoad = true;
             times_loaded.push(start.toISOString());
 
             utils.doCallback('findTimeSuccessful', config, response);

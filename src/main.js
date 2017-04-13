@@ -4,7 +4,7 @@ var $                   = require('jquery');
 window.fullcalendar     = require('fullcalendar');
 var moment              = window.moment = require('moment');
 var consultationKitSkd  = require('./consultation-kit-app-sdk')();
-require('moment-timezone/builds/moment-timezone-with-data-2010-2020.js');
+require('moment-timezone/builds/moment-timezone-with-data-2012-2022.js');
 var interpolate         = require('sprintf-js');
 
 // Internal dependencies
@@ -338,8 +338,8 @@ function ConsultationKitBooking() {
         rootTarget.append(bookingPageTarget);
 
         var form = $("#ck-form");
-        console.log(config.paypalEnv);
         loadPaypal(function() {
+          console.log(config.paypalEnv);
           window.paypal.Button.render({
             env: config.paypalEnv, // Specify 'sandbox' for the test environment
             style: {

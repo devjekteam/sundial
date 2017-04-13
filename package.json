@@ -12,7 +12,7 @@
     "dev": "webpack && webpack --config webpack.config.js --watch",
     "build": "webpack && webpack --config webpack.config.min.js",
     "deploy:dev": "npm run build && aws s3 cp ./dist/widget.min.js s3://cdn.consultationkit.com/dev/widget.min.js --acl=public-read",
-    "deploy:prod": "npm run build && aws s3 cp ./dist/widget.min.js s3://cdn.consultationkit.com/widget.min.js --acl=public-read"
+    "deploy:production": "npm run build && aws s3 cp ./dist/widget.min.js s3://cdn.consultationkit.com/widget.min.js --acl=public-read"
   },
   "author": "Consultation Kit",
   "license": "MIT",

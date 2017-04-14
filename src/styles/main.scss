@@ -50,6 +50,11 @@ $fontFamily:        'Roboto', Helvetica, Tahoma, Arial, sans-serif;
       padding-top: 35px;
     }
   }
+  .clear {
+    clear: both;
+  }
+}
+.bookingjs .bookingjs{
 
   &-calendar {
 
@@ -599,9 +604,4 @@ $fontFamily:        'Roboto', Helvetica, Tahoma, Arial, sans-serif;
     width: 50%;
     float: left;
   }
-
-  .clear {
-    clear: both;
-  }
-
 }

@@ -199,15 +199,12 @@ function ConsultationKitBooking() {
         defaultView: sizing.view,
         height: sizing.height,
         eventClick: showBookingPage,
+        lazyFetching: false,
         windowResize: function() {
           var sizing = decideCalendarSize();
           calendarTarget.fullCalendar('changeView', sizing.view);
           calendarTarget.fullCalendar('option', 'height', sizing.height);
         },
-        // viewRender: function(view) {
-        //   var days = view.intervalUnit === 'day' ? 1 : 7;
-        //   findTime(view.start, days);
-        // }
         events: function( start, end, timezone, callback ) {
           var days = end.diff(start, 'days');
           findTime(start, days, callback);

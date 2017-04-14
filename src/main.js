@@ -77,8 +77,7 @@ function ConsultationKitBooking() {
             if (config.goToFirstEvent && response.data.length > 0) {
               var firstEventStart = response.data[0].start;
               var firstEventStartHour = moment(firstEventStart).format('HH:00:00');
-              //goToDate(firstEventStart);
-              //scrollToTime(firstEventStartHour);
+              scrollToTime(firstEventStartHour);
             }
           });
 
@@ -189,10 +188,10 @@ function ConsultationKitBooking() {
               });
         },
         eventClick: showConfirmDeletePage,
-        viewRender: function(view) {
-          var days = view.intervalUnit === 'day' ? 1 : 7;
-          findTime(view.start, days);
-        },
+        events: function( start, end, timezone, callback ) {
+          var days = end.diff(start, 'days');
+          findTime(start, days, callback);
+        }
       };
     } else {
       fullCalendarArgs = {

@@ -7,7 +7,7 @@
 var primary = {
 
   targetEl: '#ck-widget',
-  baseUrl: 'http://api.consultationkit.com',
+  baseUrl: 'https://api.consultationkit.com',
   apiToken: null,
   name: '',
   calendar_name: '',
@@ -27,10 +27,7 @@ var primary = {
     'Normal': '1 hour',
     'Long': '2 hour'
   },
-  timezone: {
-    timezone: 'America/New_York',
-    utc_offset: -4
-  },
+  timezone: 'America/New_York',
   bookingFields: {
     first_name: {
       placeholder: 'John',

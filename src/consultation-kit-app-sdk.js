@@ -75,11 +75,14 @@ ConsultationKitSdk.prototype.findTime = function(args) {
             var start_datetime = RFC3339DateString(start_of_day);
             var end_datetime = RFC3339DateString(moment(end_of_first_day).add(i, 'day'));
 
-            if (start_of_day.isBefore(moment()) && !args.editCalendar) {
-                if (start_of_day.isSame(moment(), 'day'))
-                    start_datetime = RFC3339DateString(moment());
-                else
-                    shouldSkip = true;
+            cur_datetime = moment();
+            if (start_of_day.isBefore(cur_datetime) && !args.editCalendar) {
+                if (start_of_day.isSame(cur_datetime, 'day')) {
+                  // start in 5 minute increments
+                  start_datetime = RFC3339DateString(cur_datetime.add(5 - (cur_datetime.get('minute') % 5), 'minutes'));
+                } else {
+                  shouldSkip = true;
+                }
             }
             if (!shouldSkip) {
                 var url;

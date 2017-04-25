@@ -16,7 +16,7 @@ var primary = {
   userId: null,
   calendar: null, // calendar uuid
   calendarId: null,
-  paypalEnv: 'production',
+  paypalEnv: 'production', // sandbox for test
   autoload: true,
   localConfig: false,
   includeStyles: true,
@@ -32,21 +32,24 @@ var primary = {
     first_name: {
       placeholder: 'John',
       prefilled: false,
-      locked: false
+      locked: false,
+      required: true
     },
     last_name: {
       placeholder: 'Doe',
       prefilled: false,
-      locked: false
+      locked: false,
+      required: true
     },
     email: {
       placeholder: 'john.doe@gmail.com',
       prefilled: false,
-      locked: false
+      locked: false,
+      required: true
     },
     comment: {
-      enabled: false,
-      placeholder: 'Comment',
+      enabled: true,
+      placeholder: 'Additional Information',
       prefilled: false,
       required: false,
       locked: false
@@ -55,14 +58,14 @@ var primary = {
       enabled: false,
       placeholder: 'Phone number',
       prefilled: false,
-      //required: false,
+      required: true,
       locked: false
     },
     skype: {
       enabled: false,
       placeholder: 'Skype username',
       prefilled: false,
-      //required: false,
+      required: true,
       locked: false
     },
     location: {

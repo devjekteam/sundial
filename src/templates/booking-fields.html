@@ -1,7 +1,9 @@
 <div class="bookingjs-row">
   <div class="bookingjs-col">
     <div class="bookingjs-input-group">
-      <label for="bookingjs-first_name" class="bookingjs-input-group-label">First Name <span id="first_name-error" class="bookingjs-error"></span></label>
+      <label for="bookingjs-first_name" class="bookingjs-input-group-label">First Name
+        {{# fields.first_name.required }} * {{/ fields.first_name.required }}
+        <span id="first_name-error" class="bookingjs-error"></span></label>
       <input
         class="bookingjs-form-input input-name"
         type="text"
@@ -16,7 +18,9 @@
   </div>
   <div class="bookingjs-col">
     <div class="bookingjs-input-group">
-      <label for="bookingjs-last_name" class="bookingjs-input-group-label">Last Name <span id="last_name-error" class="bookingjs-error"></span></label>
+      <label for="bookingjs-last_name" class="bookingjs-input-group-label">Last Name
+        {{# fields.last_name.required }} * {{/ fields.last_name.required }}
+        <span id="last_name-error" class="bookingjs-error"></span></label>
       <input
         class="bookingjs-form-input input-name"
         type="text"
@@ -30,52 +34,71 @@
     </div>
   </div>
 </div>
-<div class="bookingjs-input-group">
-  <label for="bookingjs-email" class="bookingjs-input-group-label">Email <span id="email-error" class="bookingjs-error"></span></label>
-  <input
-    class="bookingjs-form-input input-email"
-    type="email"
-    name="email"
-    id="bookingjs-email"
-    placeholder="{{ fields.email.placeholder }}"
-    {{# fields.email.prefilled }} value="{{ fields.email.prefilled }}" {{/ fields.email.prefilled }}
-    {{# fields.email.locked }} readonly {{/ fields.email.locked }}
-    required
-  />
+<div class="bookingjs-row">
+  <div class="bookingjs-col">
+    <div class="bookingjs-input-group">
+      <label for="bookingjs-email" class="bookingjs-input-group-label">Email
+        {{# fields.email.required }} * {{/ fields.email.required }}
+        <span id="email-error" class="bookingjs-error"></span></label>
+      <input
+        class="bookingjs-form-input input-email"
+        type="email"
+        name="email"
+        id="bookingjs-email"
+        placeholder="{{ fields.email.placeholder }}"
+        {{# fields.email.prefilled }} value="{{ fields.email.prefilled }}" {{/ fields.email.prefilled }}
+        {{# fields.email.locked }} readonly {{/ fields.email.locked }}
+        required
+      />
+    </div>
+  </div>
 </div>
-{{# fields.phone.enabled }}
-<div class="bookingjs-input-group">
-  <label for="bookingjs-phone" class="bookingjs-input-group-label">Phone Number <span id="phone-error" class="bookingjs-error"></span></label>
-  <input
-          class="bookingjs-form-input input-phone"
-          type="tel"
-          name="phone"
-          id="bookingjs-phone"
-          placeholder="{{ fields.phone.placeholder }}"
-          {{# fields.phone.prefilled }} value="{{ fields.phone.prefilled }}" {{/ fields.phone.prefilled }}
-  {{# fields.phone.required }} required {{/ fields.phone.required }}
-  {{# fields.phone.locked }} readonly {{/ fields.phone.locked }}
-  />
-</div>
-{{/ fields.phone.enabled }}
 
-{{# fields.skype.enabled }}
-<div class="bookingjs-input-group">
-  <label for="bookingjs-skype" class="bookingjs-input-group-label">Skype Username <span id="skype-error" class="bookingjs-error"></span></label>
-  <input
-          class="bookingjs-form-input input-skype"
-          type="text"
-          name="skype"
-          id="bookingjs-skype"
-          placeholder="{{ fields.skype.placeholder }}"
-          {{# fields.skype.prefilled }} value="{{ fields.skype.prefilled }}" {{/ fields.skype.prefilled }}
-  {{# fields.skype.required }} required {{/ fields.skype.required }}
-  {{# fields.skype.locked }} readonly {{/ fields.skype.locked }}
-  />
+<div class="bookingjs-row">
+  <div class="bookingjs-col">
+    {{# fields.phone.enabled }}
+    <div class="bookingjs-input-group">
+      <label for="bookingjs-phone" class="bookingjs-input-group-label">Phone Number
+        {{# fields.phone.required }} * {{/ fields.phone.required }}
+        <span id="phone-error" class="bookingjs-error"></span></label>
+      <input
+              class="bookingjs-form-input input-phone"
+              type="tel"
+              name="phone"
+              id="bookingjs-phone"
+              placeholder="{{ fields.phone.placeholder }}"
+              {{# fields.phone.prefilled }} value="{{ fields.phone.prefilled }}" {{/ fields.phone.prefilled }}
+      {{# fields.phone.required }} required {{/ fields.phone.required }}
+      {{# fields.phone.locked }} readonly {{/ fields.phone.locked }}
+      />
+    </div>
+    {{/ fields.phone.enabled }}
+  </div>
 </div>
-{{/ fields.skype.enabled }}
 
-{{# fields.location.enabled }}
+<div class="bookingjs-row">
+  <div class="bookingjs-col">
+    {{# fields.skype.enabled }}
+    <div class="bookingjs-input-group">
+      <label for="bookingjs-skype" class="bookingjs-input-group-label">Skype Username
+        {{# fields.skype.required }} * {{/ fields.skype.required }}
+        <span id="skype-error" class="bookingjs-error"></span></label>
+      <input
+              class="bookingjs-form-input input-skype"
+              type="text"
+              name="skype"
+              id="bookingjs-skype"
+              placeholder="{{ fields.skype.placeholder }}"
+              {{# fields.skype.prefilled }} value="{{ fields.skype.prefilled }}" {{/ fields.skype.prefilled }}
+      {{# fields.skype.required }} required {{/ fields.skype.required }}
+      {{# fields.skype.locked }} readonly {{/ fields.skype.locked }}
+      />
+    </div>
+    {{/ fields.skype.enabled }}
+  </div>
+</div>
+
+<!-- {{# fields.location.enabled }}
   <input
     class="bookingjs-form-input input-location"
     type="text"
@@ -85,14 +108,22 @@
     {{# fields.location.required }} required {{/ fields.location.required }}
     {{# fields.location.locked }} readonly {{/ fields.location.locked }}
   />
-{{/ fields.location.enabled }}
-
-{{# fields.comment.enabled }}
-<textarea
+{{/ fields.location.enabled }} -->
+<div class="bookingjs-row">
+    {{# fields.comment.enabled }}
+    <div class="bookingjs-input-group">
+      <label for="bookingjs-comment" class="bookingjs-input-group-label">Comments
+        {{# fields.comment.required }} * {{/ fields.comment.required }}
+      </label>
+      <textarea
         class="bookingjs-form-input input-comment"
         rows="3"
         name="comment"
         placeholder="{{ fields.comment.placeholder }}"
+        id="bookingjs-comments"
         {{# fields.comment.required }} required {{/ fields.comment.required }}
-{{# fields.comment.locked }} readonly {{/ fields.comment.locked }}>{{# fields.comment.prefilled }}{{ fields.comment.prefilled }}{{/ fields.comment.prefilled }}</textarea>
-{{/ fields.comment.enabled }}
+        {{# fields.comment.locked }} readonly {{/ fields.comment.locked }}
+      />
+    </div>
+    {{/ fields.comment.enabled }}
+</div>

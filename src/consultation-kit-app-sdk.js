@@ -39,14 +39,7 @@ ConsultationKitSdk.prototype.createBooking = function(args) {
                 "authorization": this.apiToken
             },
             contentType: "application/json",
-            data: JSON.stringify({
-                start_datetime: args.start_datetime,
-                end_datetime: args.end_datetime,
-                calendar_id: this.calendarId,
-                payment_id: args.payment_id,
-                payer_id: args.payer_id,
-                client: args.client
-            })
+            data: JSON.stringify(args)
         }
     );
 };

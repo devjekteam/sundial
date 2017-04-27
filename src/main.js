@@ -227,7 +227,7 @@ function ConsultationKitBooking() {
   var decideCalendarSize = function() {
 
     var view = 'agendaWeek';
-    var height = 480;
+    var height = 500;
     var rootWidth = rootTarget.width();
 
     if (rootWidth < 480) {
@@ -239,10 +239,10 @@ function ConsultationKitBooking() {
       rootTarget.removeClass('is-small');
     }
 
-    if (config.bookingFields.comment.enabled) {  height += 84; }
-    if (config.bookingFields.phone.enabled) {    height += 64; }
-    if (config.bookingFields.skype.enabled) {     height += 64; }
-    if (config.bookingFields.location.enabled) { height += 64; }
+    if (config.bookingFields.comment.enabled) {  height += 94; }
+    // if (config.bookingFields.phone.enabled) {    height += 64; }
+    // if (config.bookingFields.skype.enabled) {     height += 64; }
+    // if (config.bookingFields.location.enabled) { height += 64; }
 
     return {
       height: height,

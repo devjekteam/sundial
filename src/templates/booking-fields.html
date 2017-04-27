@@ -33,9 +33,11 @@
       />
     </div>
   </div>
+  <div style="clear:both"></div>
 </div>
 <div class="bookingjs-row">
-  <div class="bookingjs-col">
+  {{# fields.phone.enabled }}<div class="bookingjs-col">{{/ fields.phone.enabled }}
+  {{# fields.skype.enabled }}<div class="bookingjs-col">{{/ fields.skype.enabled }}
     <div class="bookingjs-input-group">
       <label for="bookingjs-email" class="bookingjs-input-group-label">Email
         {{# fields.email.required }} * {{/ fields.email.required }}
@@ -51,12 +53,10 @@
         required
       />
     </div>
-  </div>
-</div>
-
-<div class="bookingjs-row">
+  {{# fields.phone.enabled }}</div>{{/ fields.phone.enabled }}
+  {{# fields.skype.enabled }}</div>{{/ fields.skype.enabled }}
+  {{# fields.phone.enabled }}
   <div class="bookingjs-col">
-    {{# fields.phone.enabled }}
     <div class="bookingjs-input-group">
       <label for="bookingjs-phone" class="bookingjs-input-group-label">Phone Number
         {{# fields.phone.required }} * {{/ fields.phone.required }}
@@ -72,13 +72,12 @@
       {{# fields.phone.locked }} readonly {{/ fields.phone.locked }}
       />
     </div>
-    {{/ fields.phone.enabled }}
   </div>
-</div>
+  <div style="clear:both"></div>
+  {{/ fields.phone.enabled }}
 
-<div class="bookingjs-row">
+  {{# fields.skype.enabled }}
   <div class="bookingjs-col">
-    {{# fields.skype.enabled }}
     <div class="bookingjs-input-group">
       <label for="bookingjs-skype" class="bookingjs-input-group-label">Skype Username
         {{# fields.skype.required }} * {{/ fields.skype.required }}
@@ -94,11 +93,12 @@
       {{# fields.skype.locked }} readonly {{/ fields.skype.locked }}
       />
     </div>
-    {{/ fields.skype.enabled }}
   </div>
+  <div style="clear:both"></div>
+  {{/ fields.skype.enabled }}
 </div>
 
-<!-- {{# fields.location.enabled }}
+{{# fields.location.enabled }}
   <input
     class="bookingjs-form-input input-location"
     type="text"
@@ -108,9 +108,10 @@
     {{# fields.location.required }} required {{/ fields.location.required }}
     {{# fields.location.locked }} readonly {{/ fields.location.locked }}
   />
-{{/ fields.location.enabled }} -->
-<div class="bookingjs-row">
-    {{# fields.comment.enabled }}
+{{/ fields.location.enabled }}
+
+{{# fields.comment.enabled }}
+  <div class="bookingjs-row">
     <div class="bookingjs-input-group">
       <label for="bookingjs-comment" class="bookingjs-input-group-label">Comments
         {{# fields.comment.required }} * {{/ fields.comment.required }}
@@ -125,5 +126,5 @@
         {{# fields.comment.locked }} readonly {{/ fields.comment.locked }}
       />
     </div>
-    {{/ fields.comment.enabled }}
-</div>
+  </div>
+{{/ fields.comment.enabled }}
